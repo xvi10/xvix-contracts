@@ -37,7 +37,8 @@ contract Pricer {
 
     function update() external {
         (, , uint32 t2) = IUniswapV2Pair(pair).getReserves();
-        if (t2 - lastBlockTime < MIN_INTERVAL) {
+        bool inNextInterval = t2 - lastBlockTime > MIN_INTERVAL; // overflow is desired
+        if (!inNextInterval) {
             return;
         }
 
