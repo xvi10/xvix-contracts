@@ -2,6 +2,6 @@
 
 pragma solidity =0.6.12;
 
-interface ILattePricer {
+interface ILatte {
     function mint() external returns (bool);
 }
