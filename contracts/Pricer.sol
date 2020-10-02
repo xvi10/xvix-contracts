@@ -23,6 +23,7 @@ contract Pricer {
     uint32 public lastBlockTime; // // uses single storage slot
     bool private _increasingPrice; // // uses single storage slot
     bool private _decreasingPrice; // // uses single storage slot
+    uint224 private _lastPrice;
 
     constructor(address _latte, address _pair) public {
         latte = _latte;
@@ -34,10 +35,10 @@ contract Pricer {
         use0 = token0 == _latte;
     }
 
-    function update() external returns (uint224) {
+    function update() external {
         (, , uint32 t2) = IUniswapV2Pair(pair).getReserves();
         if (t2 - lastBlockTime < MIN_INTERVAL) {
-            return 0;
+            return;
         }
 
         uint256 p2 = _currentPrice();
@@ -54,8 +55,11 @@ contract Pricer {
         t0 = t1;
         t1 = t2;
         lastBlockTime = t2;
+        _lastPrice = averagePrice1;
+    }
 
-        return averagePrice1;
+    function lastPrice() external view returns (uint224) {
+        return _lastPrice;
     }
 
     function hasIncreasingPrice() external view returns (bool) {
