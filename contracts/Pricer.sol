@@ -34,16 +34,18 @@ contract Pricer {
         use0 = token0 == _latte;
     }
 
-    function update() external {
+    function update() external returns (uint224) {
         (, , uint32 t2) = IUniswapV2Pair(pair).getReserves();
         if (t2 - lastBlockTime < MIN_INTERVAL) {
-            return;
+            return 0;
         }
 
         uint256 p2 = _currentPrice();
+        uint224 averagePrice0;
+        uint224 averagePrice1;
         if (p0 != 0 && p1 != 0) {
-            uint224 averagePrice0 = uint224((p1 - p0) / (t1 - t0)); // overflow is desired
-            uint224 averagePrice1 = uint224((p2 - p1) / (t2 - t1)); // overflow is desired
+            averagePrice0 = uint224((p1 - p0) / (t1 - t0)); // overflow is desired
+            averagePrice1 = uint224((p2 - p1) / (t2 - t1)); // overflow is desired
             _updatePriceDirection(averagePrice0, averagePrice1);
         }
 
@@ -52,6 +54,8 @@ contract Pricer {
         t0 = t1;
         t1 = t2;
         lastBlockTime = t2;
+
+        return averagePrice1;
     }
 
     function hasIncreasingPrice() external view returns (bool) {
@@ -81,9 +85,5 @@ contract Pricer {
 
     function _currentPrice() private view returns (uint256) {
         return use0 ? IUniswapV2Pair(pair).price0CumulativeLast() : IUniswapV2Pair(pair).price1CumulativeLast();
-    }
-
-    function _currentBlockTimestamp() private view returns (uint32) {
-        return uint32(block.timestamp % 2 ** 32);
     }
 }
