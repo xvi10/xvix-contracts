@@ -102,6 +102,10 @@ contract Latte is IERC20 {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
+        _update();
+    }
+
+    function _update() {
         if (pricer != address(0)) {
             IPricer(pricer).update();
         }
