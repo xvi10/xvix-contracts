@@ -3,7 +3,8 @@
 pragma solidity =0.6.12;
 
 import "./libraries/math/SafeMath.sol";
-import "./Latte.sol";
+
+import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 
 contract Cafe {
@@ -30,8 +31,9 @@ contract Cafe {
         gov = _gov;
     }
 
-    function mint() external payable {
+    function mint() external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value");
+        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: minting is not available");
         // calculate the max mintable amount
         // get the amount of ethereum to charge and amount to be minted
         // mint the amount to the user and refund the remaining eth to the user

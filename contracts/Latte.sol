@@ -5,27 +5,32 @@ pragma solidity =0.6.12;
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
+import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 
-contract Latte is IERC20 {
+contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
 
-    mapping (address => uint256) public balances;
-    mapping (address => mapping (address => uint256)) public allowances;
-
-    uint256 public supply;
-
+    uint256 public constant MIN_INTERVAL = 30 minutes;
     string public constant name = "Latte";
     string public constant symbol = "LATTE";
     uint8 public constant decimals = 18;
 
     string public website = "https://lattefi.app";
+    uint256 public supply;
+    uint256 public supplySnapshot;
+    uint32 public lastBlockTime;
+
     address public gov;
     address public cafe;
     address public pricer;
 
+    mapping (address => uint256) public balances;
+    mapping (address => mapping (address => uint256)) public allowances;
+
     constructor() public {
         gov = msg.sender;
+        _update();
     }
 
     function totalSupply() public view override returns (uint256) {
@@ -88,7 +93,7 @@ contract Latte is IERC20 {
         pricer = _pricer;
     }
 
-    function mint(address _account, uint256 _amount) external returns(bool) {
+    function mint(address _account, uint256 _amount) external override returns(bool) {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
@@ -105,7 +110,14 @@ contract Latte is IERC20 {
         _update();
     }
 
-    function _update() {
+    function _update() private {
+        uint32 blockTime = uint32(block.timestamp % 2**32);
+        bool inNextInterval = blockTime - lastBlockTime > MIN_INTERVAL; // overflow is desired
+        if (inNextInterval) {
+            supplySnapshot = supply;
+            lastBlockTime = blockTime;
+        }
+
         if (pricer != address(0)) {
             IPricer(pricer).update();
         }
