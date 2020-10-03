@@ -33,32 +33,32 @@ contract Latte is IERC20 {
         return balances[_account];
     }
 
-    function transfer(address _recipient, uint256 _amount) public virtual override returns (bool) {
+    function transfer(address _recipient, uint256 _amount) public override returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
         return true;
     }
 
-    function allowance(address _owner, address _spender) public view virtual override returns (uint256) {
+    function allowance(address _owner, address _spender) public view override returns (uint256) {
         return allowances[_owner][_spender];
     }
 
-    function approve(address _spender, uint256 _amount) public virtual override returns (bool) {
+    function approve(address _spender, uint256 _amount) public override returns (bool) {
         _approve(msg.sender, _spender, _amount);
         return true;
     }
 
-    function transferFrom(address _sender, address _recipient, uint256 _amount) public virtual override returns (bool) {
+    function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
         _transfer(_sender, _recipient, _amount);
         _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
         return true;
     }
 
-    function increaseAllowance(address _spender, uint256 _addedValue) public virtual returns (bool) {
+    function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
         _approve(msg.sender, _spender, allowances[msg.sender][_spender].add(_addedValue));
         return true;
     }
 
-    function decreaseAllowance(address _spender, uint256 _subtractedValue) public virtual returns (bool) {
+    function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
         _approve(msg.sender, _spender, allowances[msg.sender][_spender].sub(_subtractedValue, "Latte: decreased allowance below zero"));
         return true;
     }
@@ -85,7 +85,7 @@ contract Latte is IERC20 {
         return true;
     }
 
-    function _transfer(address _sender, address _recipient, uint256 _amount) internal virtual {
+    function _transfer(address _sender, address _recipient, uint256 _amount) private {
         require(_sender != address(0), "Latte: transfer from the zero address");
         require(_recipient != address(0), "Latte: transfer to the zero address");
 
@@ -94,7 +94,7 @@ contract Latte is IERC20 {
         emit Transfer(_sender, _recipient, _amount);
     }
 
-    function _mint(address _account, uint256 _amount) internal virtual {
+    function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: mint to the zero address");
 
         supply = supply.add(_amount);
@@ -102,7 +102,7 @@ contract Latte is IERC20 {
         emit Transfer(address(0), _account, _amount);
     }
 
-    function _burn(address _account, uint256 _amount) internal virtual {
+    function _burn(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: burn from the zero address");
 
         balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
@@ -110,7 +110,7 @@ contract Latte is IERC20 {
         emit Transfer(_account, address(0), _amount);
     }
 
-    function _approve(address _owner, address _spender, uint256 _amount) internal virtual {
+    function _approve(address _owner, address _spender, uint256 _amount) private {
         require(_owner != address(0), "Latte: approve from the zero address");
         require(_spender != address(0), "Latte: approve to the zero address");
 
