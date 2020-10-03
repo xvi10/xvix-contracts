@@ -5,6 +5,8 @@ pragma solidity =0.6.12;
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
+import "./interfaces/IPricer.sol";
+
 contract Latte is IERC20 {
     using SafeMath for uint256;
 
@@ -19,7 +21,8 @@ contract Latte is IERC20 {
 
     string public website = "https://lattefi.app";
     address public gov;
-    address public minter;
+    address public cafe;
+    address public pricer;
 
     constructor() public {
         gov = msg.sender;
@@ -73,14 +76,20 @@ contract Latte is IERC20 {
         gov = _gov;
     }
 
-    function setMinter(address _minter) external {
+    function setCafe(address _cafe) external {
         require(msg.sender == gov, "Latte: forbidden");
-        require(minter == address(0), "Latte: minter already set");
-        minter = _minter;
+        require(cafe == address(0), "Latte: cafe already set");
+        cafe = _cafe;
+    }
+
+    function setPricer(address _pricer) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        require(pricer == address(0), "Latte: pricer already set");
+        pricer = _pricer;
     }
 
     function mint(address _account, uint256 _amount) external returns(bool) {
-        require(msg.sender == minter, "Latte: forbidden");
+        require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
     }
@@ -92,6 +101,10 @@ contract Latte is IERC20 {
         balances[_sender] = balances[_sender].sub(_amount, "Latte: transfer amount exceeds balance");
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
+
+        if (pricer != address(0)) {
+            IPricer(pricer).update();
+        }
     }
 
     function _mint(address _account, uint256 _amount) private {
