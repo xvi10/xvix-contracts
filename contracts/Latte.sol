@@ -17,9 +17,10 @@ contract Latte is IERC20, ILatte {
     uint8 public constant decimals = 18;
 
     string public website = "https://lattefi.app";
-    uint256 public supply;
-    uint256 public supplySnapshot;
     uint32 public lastBlockTime;
+
+    uint256 private _totalSupply;
+    uint256 private _supplySnapshot;
 
     address public gov;
     address public cafe;
@@ -33,8 +34,12 @@ contract Latte is IERC20, ILatte {
         _update();
     }
 
-    function totalSupply() public view override returns (uint256) {
-        return supply;
+    function totalSupply() public view override(IERC20, ILatte) returns (uint256) {
+        return _totalSupply;
+    }
+
+    function supplySnapshot() public view override returns (uint256) {
+        return _supplySnapshot;
     }
 
     function balanceOf(address _account) public view override returns (uint256) {
@@ -114,7 +119,7 @@ contract Latte is IERC20, ILatte {
         uint32 blockTime = uint32(block.timestamp % 2**32);
         bool inNextInterval = blockTime - lastBlockTime > MIN_INTERVAL; // overflow is desired
         if (inNextInterval) {
-            supplySnapshot = supply;
+            _supplySnapshot = _totalSupply;
             lastBlockTime = blockTime;
         }
 
@@ -126,7 +131,7 @@ contract Latte is IERC20, ILatte {
     function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: mint to the zero address");
 
-        supply = supply.add(_amount);
+        _totalSupply = _totalSupply.add(_amount);
         balances[_account] = balances[_account].add(_amount);
         emit Transfer(address(0), _account, _amount);
     }
@@ -135,7 +140,7 @@ contract Latte is IERC20, ILatte {
         require(_account != address(0), "Latte: burn from the zero address");
 
         balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
-        supply = supply.sub(_amount);
+        _totalSupply = _totalSupply.sub(_amount);
         emit Transfer(_account, address(0), _amount);
     }
 
