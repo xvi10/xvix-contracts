@@ -58,7 +58,8 @@ contract Pool is IPool {
     }
 
     function _claim(address _account) private {
-        uint256 claimable = shares[_account].mul(capital).div(totalShares);
+        uint256 usableCapital = capital.div(200);
+        uint256 claimable = shares[_account].mul(usableCapital).div(totalShares);
         uint256 value = claimable.sub(claimed[_account]);
         if (value == 0) {
             return;
