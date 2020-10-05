@@ -7,6 +7,7 @@ import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
+import "./interfaces/IPool.sol";
 
 contract Cafe {
     using SafeMath for uint256;
@@ -14,17 +15,19 @@ contract Cafe {
     uint256 public constant MINTABLE_BASIS_POINTS = 20;
     uint256 public constant Q112 = 2**112;
 
-    address public latte;
-    address public pricer;
-    address public gov;
+    address public immutable latte;
+    address public immutable pricer;
+    address public immutable shopper;
+    address public immutable pool;
 
-    address public shopper;
-    address public reserve;
+    address public gov;
     address public cashier;
 
-    constructor(address _latte, address _pricer) public {
+    constructor(address _latte, address _pricer, address _shopper, address _pool) public {
         latte = _latte;
         pricer = _pricer;
+        shopper = _shopper;
+        pool = _pool;
         gov = msg.sender;
         cashier = msg.sender;
     }
@@ -73,11 +76,11 @@ contract Cafe {
         ILatte(latte).mint(msg.sender, mintable);
 
         uint256 toShopper = msg.value.mul(4995).div(10000);
-        uint256 toReserve = toShopper;
-        uint256 toCashier = msg.value.sub(toShopper).sub(toReserve);
+        uint256 toPool = toShopper;
+        uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 
         address(uint160(shopper)).transfer(toShopper);
-        address(uint160(reserve)).transfer(toReserve);
+        IPool(pool).fund{value: toPool}();
         address(uint160(cashier)).transfer(toCashier);
     }
 }

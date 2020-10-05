@@ -7,6 +7,7 @@ import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
+import "./interfaces/IPool.sol";
 
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
@@ -26,6 +27,7 @@ contract Latte is IERC20, ILatte {
     address public cafe;
     address public shopper;
     address public pricer;
+    address public pool;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
@@ -69,6 +71,7 @@ contract Latte is IERC20, ILatte {
         if (!_inTransferFromAllowList(msg.sender)) {
             _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
         }
+
         return true;
     }
 
@@ -110,6 +113,12 @@ contract Latte is IERC20, ILatte {
         pricer = _pricer;
     }
 
+    function setPool(address _pool) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        require(pool == address(0), "Latte: pool already set");
+        pool = _pool;
+    }
+
     function mint(address _account, uint256 _amount) external override returns(bool) {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
@@ -122,8 +131,8 @@ contract Latte is IERC20, ILatte {
         return true;
     }
 
-    function _inTransferFromAllowList(address _entity) private view returns (bool) {
-        return _entity == shopper;
+    function _inTransferFromAllowList(address _account) private view returns (bool) {
+        return _account == shopper;
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
@@ -133,6 +142,10 @@ contract Latte is IERC20, ILatte {
         balances[_sender] = balances[_sender].sub(_amount, "Latte: transfer amount exceeds balance");
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
+
+        if (pool != address(0)) {
+            IPool(pool).burn(_sender);
+        }
 
         _update();
     }
