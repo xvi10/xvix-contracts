@@ -3,6 +3,7 @@
 pragma solidity =0.6.12;
 
 import "./libraries/math/SafeMath.sol";
+import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
@@ -40,9 +41,10 @@ contract Cafe {
 
     function getMaxMintableAmount() public view returns (uint256) {
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 maxSupply = supply.mul(MINTABLE_BASIS_POINTS).div(1000);
-        uint256 currentSupply = ILatte(latte).totalSupply();
-        if (currentSupply > maxSupply) {
+        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(1000);
+        uint256 maxSupply = supply.add(delta);
+        uint256 currentSupply = IERC20(latte).totalSupply();
+        if (currentSupply >= maxSupply) {
             return 0;
         }
         return maxSupply.sub(currentSupply);
@@ -58,15 +60,15 @@ contract Cafe {
 
     function mint() external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value");
-        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for minting");
+        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
 
         uint256 mintable = getMintableAmount(msg.value);
-        require(mintable > 0, "Cafe: mint price not available");
+        require(mintable > 0, "Cafe: sell price not available");
 
         uint256 maxMintable = getMaxMintableAmount();
         require(maxMintable > 0, "Cafe: latte fully sold");
 
-        require(mintable <= maxMintable, "Cafe: insufficient latte to fulfill request");
+        require(mintable <= maxMintable, "Cafe: amount to sell exceeds allowed limit");
 
         ILatte(latte).mint(msg.sender, mintable);
 

@@ -24,6 +24,7 @@ contract Latte is IERC20, ILatte {
 
     address public gov;
     address public cafe;
+    address public shopper;
     address public pricer;
 
     mapping (address => uint256) public balances;
@@ -34,7 +35,7 @@ contract Latte is IERC20, ILatte {
         _update();
     }
 
-    function totalSupply() public view override(IERC20, ILatte) returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
@@ -52,6 +53,9 @@ contract Latte is IERC20, ILatte {
     }
 
     function allowance(address _owner, address _spender) public view override returns (uint256) {
+        if (_inTransferFromAllowList(_spender)) {
+            return uint256(-1);
+        }
         return allowances[_owner][_spender];
     }
 
@@ -62,7 +66,9 @@ contract Latte is IERC20, ILatte {
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
         _transfer(_sender, _recipient, _amount);
-        _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
+        if (!_inTransferFromAllowList(msg.sender)) {
+            _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
+        }
         return true;
     }
 
@@ -92,6 +98,12 @@ contract Latte is IERC20, ILatte {
         cafe = _cafe;
     }
 
+    function setShopper(address _shopper) external {
+        require(msg.sender == shopper, "Latte: forbidden");
+        require(shopper == address(0), "Latte: shopper already set");
+        shopper = _shopper;
+    }
+
     function setPricer(address _pricer) external {
         require(msg.sender == gov, "Latte: forbidden");
         require(pricer == address(0), "Latte: pricer already set");
@@ -102,6 +114,16 @@ contract Latte is IERC20, ILatte {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
+    }
+
+    function burn(address _account, uint256 _amount) external override returns(bool) {
+        require(msg.sender == shopper, "Latte: forbidden");
+        _burn(_account, _amount);
+        return true;
+    }
+
+    function _inTransferFromAllowList(address _entity) private view returns (bool) {
+        return _entity == shopper;
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
