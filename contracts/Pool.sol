@@ -6,6 +6,7 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
 import "./interfaces/IPool.sol";
+import "./interfaces/IPricer.sol";
 
 contract Pool is IPool {
     using SafeMath for uint256;
@@ -16,6 +17,7 @@ contract Pool is IPool {
     uint256 public constant BONUS_REWARD_BASIS_POINTS = 5000;
 
     address public immutable latte;
+    address public immutable pricer;
     address public immutable gov;
     address public market;
 
@@ -29,8 +31,9 @@ contract Pool is IPool {
     mapping (uint256 => uint256) public totalShares;
     mapping (address => mapping(uint256 => bool)) public claimed;
 
-    constructor(address _latte) public {
+    constructor(address _latte, address _pricer) public {
         latte = _latte;
+        pricer = _pricer;
         gov = msg.sender;
         _update();
     }
@@ -56,6 +59,11 @@ contract Pool is IPool {
         }
 
         _update();
+
+        if (!IPricer(pricer).hasDecreasingPrice()) {
+            return;
+        }
+
         _claim(_account);
         _rollover(_account, latestBlockTime, blockTimes[_account]);
 
