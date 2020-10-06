@@ -69,7 +69,7 @@ contract Shopper {
         require(value <= maxBurnable, "Shopper: amount to buy exceeds allowed limit");
 
         uint256 ethReturned = getEthReturnedAmount(value);
-        require(ethReturned < address(this).balance, "Shopper: insufficient ETH to fulfill request");
+        require(ethReturned <= address(this).balance, "Shopper: insufficient ETH to fulfill request");
 
         uint256 burnBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS);
         uint256 toBurn = value.mul(burnBasisPoints).div(MAX_BASIS_POINTS);
