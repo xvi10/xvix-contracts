@@ -12,6 +12,7 @@ contract Shopper {
     using SafeMath for uint256;
 
     uint256 public constant BURNABLE_BASIS_POINTS = 20;
+    uint256 public constant FEE_BASIS_POINTS = 100;
     uint256 public constant Q112 = 2**112;
 
     address public latte;
@@ -69,7 +70,7 @@ contract Shopper {
         uint256 ethReturned = getEthReturnedAmount(value);
         require(ethReturned < address(this).balance, "Shopper: insufficient ETH to fulfill request");
 
-        uint256 toBurn = value.mul(9990).div(10000);
+        uint256 toBurn = value.mul(10000 - FEE_BASIS_POINTS).div(10000);
         ILatte(latte).burn(msg.sender, toBurn);
 
         uint256 toCashier = value.sub(toBurn);

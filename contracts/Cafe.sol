@@ -13,6 +13,7 @@ contract Cafe {
     using SafeMath for uint256;
 
     uint256 public constant MINTABLE_BASIS_POINTS = 20;
+    uint256 public constant FEE_BASIS_POINTS = 100;
     uint256 public constant Q112 = 2**112;
 
     address public immutable latte;
@@ -75,7 +76,8 @@ contract Cafe {
 
         ILatte(latte).mint(msg.sender, mintable);
 
-        uint256 toShopper = msg.value.mul(4995).div(10000);
+        uint256 shopperBasisPoints = (5000 - FEE_BASIS_POINTS) / 2;
+        uint256 toShopper = msg.value.mul(shopperBasisPoints).div(10000);
         uint256 toPool = toShopper;
         uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 
