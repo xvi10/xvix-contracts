@@ -12,8 +12,9 @@ import "./interfaces/IPool.sol";
 contract Cafe {
     using SafeMath for uint256;
 
-    uint256 public constant MINTABLE_BASIS_POINTS = 20;
+    uint256 public constant MINTABLE_BASIS_POINTS = 50;
     uint256 public constant FEE_BASIS_POINTS = 100;
+    uint256 public constant MAX_BASIS_POINTS = 10000;
     uint256 public constant Q112 = 2**112;
 
     address public immutable latte;
@@ -45,7 +46,7 @@ contract Cafe {
 
     function getMaxMintableAmount() public view returns (uint256) {
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(1000);
+        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(MAX_BASIS_POINTS);
         uint256 maxSupply = supply.add(delta);
         uint256 currentSupply = IERC20(latte).totalSupply();
         if (currentSupply >= maxSupply) {
@@ -64,7 +65,7 @@ contract Cafe {
 
     function mint() external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value");
-        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
+        require(!IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
 
         uint256 mintable = getMintableAmount(msg.value);
         require(mintable > 0, "Cafe: sell price not available");
@@ -76,8 +77,8 @@ contract Cafe {
 
         ILatte(latte).mint(msg.sender, mintable);
 
-        uint256 shopperBasisPoints = (5000 - FEE_BASIS_POINTS) / 2;
-        uint256 toShopper = msg.value.mul(shopperBasisPoints).div(10000);
+        uint256 shopperBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS).div(2);
+        uint256 toShopper = msg.value.mul(shopperBasisPoints).div(MAX_BASIS_POINTS);
         uint256 toPool = toShopper;
         uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 

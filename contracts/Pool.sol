@@ -15,6 +15,7 @@ contract Pool is IPool {
     uint256 public constant REWARDS_BASIS_POINTS = 100;
     uint256 public constant BONUS_REWARD_INTERVAL = 7 days;
     uint256 public constant BONUS_REWARD_BASIS_POINTS = 5000;
+    uint256 public constant MAX_BASIS_POINTS = 10000;
 
     address public immutable latte;
     address public immutable pricer;
@@ -106,7 +107,7 @@ contract Pool is IPool {
             return;
         }
 
-        uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(10000);
+        uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(MAX_BASIS_POINTS);
         rewards[blockTime] = reward;
         distributedCapital = distributedCapital.add(reward);
     }
@@ -125,7 +126,7 @@ contract Pool is IPool {
         }
 
         // rollover shares from the previous interval
-        shares[_account] = shares[_account].mul(BONUS_REWARD_BASIS_POINTS).div(10000);
+        shares[_account] = shares[_account].mul(BONUS_REWARD_BASIS_POINTS).div(MAX_BASIS_POINTS);
     }
 
     function _claim(address _account) private returns (uint256) {

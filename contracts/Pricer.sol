@@ -37,7 +37,7 @@ contract Pricer is IPricer {
     }
 
     function update() external override returns (bool) {
-        (, , uint32 t2) = IUniswapV2Pair(pair).getReserves();
+        uint32 t2 = getLastBlockTime();
         bool inNextInterval = t2 - _t1 > MIN_INTERVAL; // overflow is desired
         if (!inNextInterval) {
             return false;
@@ -74,11 +74,30 @@ contract Pricer is IPricer {
     }
 
     function hasIncreasingPrice() external view override returns (bool) {
+        if (hasStalePricing()) {
+            return false;
+        }
+
         return _hasIncreasingPrice;
     }
 
     function hasDecreasingPrice() external view override returns (bool) {
+        if (hasStalePricing()) {
+            return false;
+        }
+
         return _hasDecreasingPrice;
+    }
+
+    function hasStalePricing() public view returns (bool) {
+        uint32 lastBlockTime = getLastBlockTime();
+        uint32 blockTime = uint32(block.timestamp % 2 ** 32);
+        return blockTime - lastBlockTime > MIN_INTERVAL; // overflow is desired
+    }
+
+    function getLastBlockTime() public view returns (uint32) {
+        (, , uint32 time) = IUniswapV2Pair(pair).getReserves();
+        return time;
     }
 
     function _updatePricingDirections(uint224 averagePrice0, uint224 averagePrice1) private {

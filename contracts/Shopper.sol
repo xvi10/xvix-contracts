@@ -11,8 +11,9 @@ import "./interfaces/IPricer.sol";
 contract Shopper {
     using SafeMath for uint256;
 
-    uint256 public constant BURNABLE_BASIS_POINTS = 20;
+    uint256 public constant BURNABLE_BASIS_POINTS = 50;
     uint256 public constant FEE_BASIS_POINTS = 100;
+    uint256 public constant MAX_BASIS_POINTS = 10000;
     uint256 public constant Q112 = 2**112;
 
     address public latte;
@@ -42,7 +43,7 @@ contract Shopper {
 
     function getMaxBurnableAmount() public view returns (uint256) {
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(BURNABLE_BASIS_POINTS).div(1000);
+        uint256 delta = supply.mul(BURNABLE_BASIS_POINTS).div(MAX_BASIS_POINTS);
         uint256 minSupply = supply.sub(delta);
         uint256 currentSupply = IERC20(latte).totalSupply();
         if (currentSupply <= minSupply) {
@@ -61,7 +62,7 @@ contract Shopper {
 
     function burn(uint256 value) external payable returns (bool) {
         require(value > 0, "Shopper: insufficient value");
-        require(IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
+        require(!IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
 
         uint256 maxBurnable = getMaxBurnableAmount();
         require(maxBurnable > 0, "Shopper: latte fully bought");
@@ -70,7 +71,8 @@ contract Shopper {
         uint256 ethReturned = getEthReturnedAmount(value);
         require(ethReturned < address(this).balance, "Shopper: insufficient ETH to fulfill request");
 
-        uint256 toBurn = value.mul(10000 - FEE_BASIS_POINTS).div(10000);
+        uint256 burnBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS);
+        uint256 toBurn = value.mul(burnBasisPoints).div(MAX_BASIS_POINTS);
         ILatte(latte).burn(msg.sender, toBurn);
 
         uint256 toCashier = value.sub(toBurn);
