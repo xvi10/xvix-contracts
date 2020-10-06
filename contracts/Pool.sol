@@ -58,12 +58,11 @@ contract Pool is IPool {
             return;
         }
 
-        _update();
-
         if (!IPricer(pricer).hasDecreasingPrice()) {
             return;
         }
 
+        _update();
         _claim(_account);
         _rollover(_account, latestBlockTime, blockTimes[_account]);
 
