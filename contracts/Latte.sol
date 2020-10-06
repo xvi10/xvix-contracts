@@ -102,7 +102,7 @@ contract Latte is IERC20, ILatte {
     }
 
     function setShopper(address _shopper) external {
-        require(msg.sender == shopper, "Latte: forbidden");
+        require(msg.sender == gov, "Latte: forbidden");
         require(shopper == address(0), "Latte: shopper already set");
         shopper = _shopper;
     }
@@ -129,6 +129,10 @@ contract Latte is IERC20, ILatte {
         require(msg.sender == shopper, "Latte: forbidden");
         _burn(_account, _amount);
         return true;
+    }
+
+    function update() external {
+        _update();
     }
 
     function _inTransferFromAllowList(address _account) private view returns (bool) {

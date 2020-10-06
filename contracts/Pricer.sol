@@ -5,29 +5,26 @@ pragma solidity =0.6.12;
 import "./libraries/math/SafeMath.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IPricer.sol";
-import "./Latte.sol";
 
 contract Pricer is IPricer {
     using SafeMath for uint256;
 
     uint256 public constant MIN_INTERVAL = 30 minutes;
 
-    address public immutable latte;
     address public immutable pair;
     bool public immutable use0;
 
     uint256 public p0;
     uint256 public p1;
 
-    uint32 private _t0; // // uses single storage slot
-    uint32 private _t1; // // uses single storage slot
-    bool private _hasIncreasingPrice; // // uses single storage slot
-    bool private _hasDecreasingPrice; // // uses single storage slot
+    uint32 private _t0; // uses single storage slot
+    uint32 private _t1; // uses single storage slot
+    bool private _hasIncreasingPrice; // uses single storage slot
+    bool private _hasDecreasingPrice; // uses single storage slot
 
     uint224 private _lastPrice;
 
-    constructor(address _latte, address _pair) public {
-        latte = _latte;
+    constructor(address _pair, address _latte) public {
         pair = _pair;
 
         address token0 = IUniswapV2Pair(_pair).token0();
