@@ -18,7 +18,7 @@ contract Latte is IERC20, ILatte {
     uint8 public constant decimals = 18;
 
     string public website = "https://lattefi.app";
-    uint32 public lastBlockTime;
+    uint256 public latestBlockTime;
 
     uint256 private _totalSupply;
     uint256 private _supplySnapshot;
@@ -151,11 +151,10 @@ contract Latte is IERC20, ILatte {
     }
 
     function _update() private {
-        uint32 blockTime = uint32(block.timestamp % 2**32);
-        bool inNextInterval = blockTime - lastBlockTime > MIN_INTERVAL; // overflow is desired
-        if (inNextInterval) {
+        uint256 blockTime = block.timestamp;
+        if (blockTime.sub(latestBlockTime) > MIN_INTERVAL) {
             _supplySnapshot = _totalSupply;
-            lastBlockTime = blockTime;
+            latestBlockTime = blockTime;
         }
 
         if (pricer != address(0)) {
