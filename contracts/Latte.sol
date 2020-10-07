@@ -20,9 +20,6 @@ contract Latte is IERC20, ILatte {
     string public website = "https://lattefi.app";
     uint256 public latestBlockTime;
 
-    uint256 private _totalSupply;
-    uint256 private _supplySnapshot;
-
     address public gov;
     address public cafe;
     address public shopper;
@@ -31,6 +28,9 @@ contract Latte is IERC20, ILatte {
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
+
+    uint256 private _totalSupply;
+    uint256 private _supplySnapshot;
 
     constructor() public {
         gov = msg.sender;
@@ -67,10 +67,10 @@ contract Latte is IERC20, ILatte {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
-        _transfer(_sender, _recipient, _amount);
         if (!_inTransferFromAllowList(msg.sender)) {
             _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
         }
+        _transfer(_sender, _recipient, _amount);
 
         return true;
     }

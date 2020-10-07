@@ -1,6 +1,6 @@
 const { expect, use } = require("chai")
 const { MockProvider, solidity } = require("ethereum-waffle")
-const { loadSystemFixture } = require("./shared/fixtures")
+const { loadFixtures } = require("./shared/fixtures")
 const { mineBlock, increaseTime } = require("./shared/utilities")
 
 use(solidity)
@@ -11,8 +11,8 @@ describe("Latte", function() {
   let latte
 
   beforeEach(async () => {
-    const system = await loadSystemFixture(wallet)
-    latte = system.latte
+    const fixtures = await loadFixtures(wallet)
+    latte = fixtures.latte
   })
 
   it("inits latestBlockTime", async () => {

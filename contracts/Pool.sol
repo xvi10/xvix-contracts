@@ -150,6 +150,7 @@ contract Pool is IPool {
 
         claimed[_account][blockTime] = true;
         address(uint160(_account)).transfer(claimable);
+
         return claimable;
     }
 }

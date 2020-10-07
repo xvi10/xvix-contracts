@@ -6,7 +6,7 @@ const Cafe = require("../../artifacts/Cafe.json")
 
 const { deployContract } = require("ethereum-waffle")
 
-async function loadSystemFixture(wallet) {
+async function loadFixtures(wallet) {
   const latte = await deployContract(wallet, Latte, [])
   const pricer = await deployContract(wallet, Pricer, [])
   const shopper = await deployContract(wallet, Shopper, [latte.address, pricer.address])
@@ -24,5 +24,5 @@ async function loadSystemFixture(wallet) {
 }
 
 module.exports = {
-  loadSystemFixture
+  loadFixtures
 }
