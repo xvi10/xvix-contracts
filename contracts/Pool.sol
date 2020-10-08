@@ -22,21 +22,21 @@ contract Pool is IPool {
     address public immutable gov;
     address public market;
 
-    uint256 public latestBlockTime;
+    uint256 public latestSlot;
     uint256 public capital;
     uint256 public distributedCapital;
 
     mapping (uint256 => uint256) public rewards;
-    mapping (address => uint256) public blockTimes;
-    mapping (address => uint256) public shares;
+    mapping (address => uint256) public slots;
     mapping (uint256 => uint256) public totalShares;
-    mapping (address => mapping(uint256 => bool)) public claimed;
+    mapping (uint256 => mapping(address => uint256)) public shares;
+    mapping (uint256 => mapping(address => bool)) public claimed;
 
     constructor(address _latte, address _pricer) public {
         latte = _latte;
         pricer = _pricer;
         gov = msg.sender;
-        _update();
+        _moveToNextSlot();
     }
 
     function setMarket(address _market) external {
@@ -50,6 +50,7 @@ contract Pool is IPool {
     }
 
     function claim() external returns (uint256) {
+        _moveToNextSlot();
         return _claim(msg.sender);
     }
 
@@ -63,43 +64,67 @@ contract Pool is IPool {
             return;
         }
 
-        _update();
+        _moveToNextSlot();
         _claim(_account);
-        _rollover(_account, latestBlockTime, blockTimes[_account]);
+        _rollover(_account, latestSlot);
 
-        shares[_account] = shares[_account].add(_amount);
-        totalShares[latestBlockTime] = totalShares[latestBlockTime].add(_amount);
-        blockTimes[_account] = latestBlockTime;
+        shares[latestSlot][_account] = shares[latestSlot][_account].add(_amount);
+        totalShares[latestSlot] = totalShares[latestSlot].add(_amount);
+        slots[_account] = latestSlot;
     }
 
     function burn(address _account) external override {
         require(msg.sender == latte, "Pool: forbidden");
+
+        _moveToNextSlot();
         _claim(_account);
 
-        uint256 blockTime = blockTimes[_account];
-        if (blockTime == latestBlockTime && shares[_account] != 0) {
-            totalShares[blockTime] = totalShares[blockTime].sub(shares[_account]);
-        }
-
-        shares[_account] = 0;
-    }
-
-    function _update() private {
-        uint256 blockTime = block.timestamp;
-        if (blockTime.sub(latestBlockTime) < MIN_INTERVAL) {
+        uint256 slot = slots[_account];
+        if (slot != latestSlot) {
             return;
         }
 
-        _distribute(latestBlockTime);
-        latestBlockTime = blockTime;
+        shares[slot][_account] = 0;
+        totalShares[slot] = totalShares[slot].sub(shares[slot][_account]);
     }
 
-    function _distribute(uint256 blockTime) private {
-        if (totalShares[blockTime] == 0) {
+    function _rollover(address _account, uint256 nextSlot) private {
+        uint256 slot = slots[_account];
+        if (slot == 0) {
             return;
         }
 
-        if (rewards[blockTime] != 0) {
+        if (slot == nextSlot) {
+            return;
+        }
+
+        if (nextSlot < slot.add(BONUS_REWARD_INTERVAL)) {
+            return;
+        }
+
+        shares[nextSlot][_account] = shares[slot][_account].mul(BONUS_REWARD_BASIS_POINTS).div(MAX_BASIS_POINTS);
+    }
+
+    function _moveToNextSlot() private {
+        uint256 nextSlot = _getNextSlot();
+        if (nextSlot.sub(latestSlot) < MIN_INTERVAL) {
+            return;
+        }
+
+        _distribute(latestSlot);
+        latestSlot = nextSlot;
+    }
+
+    function _getNextSlot() private view returns (uint256) {
+        return block.timestamp;
+    }
+
+    function _distribute(uint256 slot) private {
+        if (totalShares[slot] == 0) {
+            return;
+        }
+
+        if (rewards[slot] != 0) {
             return;
         }
 
@@ -108,47 +133,30 @@ contract Pool is IPool {
         }
 
         uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(MAX_BASIS_POINTS);
-        rewards[blockTime] = reward;
+        rewards[slot] = reward;
         distributedCapital = distributedCapital.add(reward);
     }
 
-    function _rollover(address _account, uint256 _blockTime, uint256 _lastBlockTime) private {
-        if (_lastBlockTime == 0) {
-            return;
-        }
-        if (_blockTime == _lastBlockTime) {
-            return;
-        }
-
-        if (_blockTime < _lastBlockTime.add(BONUS_REWARD_INTERVAL)) {
-            shares[_account] = 0;
-            return;
-        }
-
-        // rollover shares from the previous interval
-        shares[_account] = shares[_account].mul(BONUS_REWARD_BASIS_POINTS).div(MAX_BASIS_POINTS);
-    }
-
     function _claim(address _account) private returns (uint256) {
-        uint256 blockTime = blockTimes[_account];
-        if (blockTime == 0) {
+        uint256 slot = slots[_account];
+        if (slot == 0) {
             return 0;
         }
 
-        if (rewards[blockTime] == 0 || shares[_account] == 0 || totalShares[blockTime] == 0) {
+        if (rewards[slot] == 0 || shares[slot][_account] == 0 || totalShares[slot] == 0) {
             return 0;
         }
 
-        if (claimed[_account][blockTime]) {
+        if (claimed[slot][_account]) {
             return 0;
         }
 
-        uint256 claimable = rewards[blockTime].mul(shares[_account]).div(totalShares[blockTime]);
+        uint256 claimable = rewards[slot].mul(shares[slot][_account]).div(totalShares[slot]);
         if (claimable == 0) {
             return 0;
         }
 
-        claimed[_account][blockTime] = true;
+        claimed[slot][_account] = true;
         address(uint160(_account)).transfer(claimable);
 
         return claimable;
