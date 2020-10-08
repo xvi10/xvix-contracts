@@ -32,8 +32,9 @@ contract Latte is IERC20, ILatte {
     uint256 private _totalSupply;
     uint256 private _supplySnapshot;
 
-    constructor() public {
+    constructor(uint256 initialSupply) public {
         gov = msg.sender;
+        _mint(msg.sender, initialSupply);
         _update();
     }
 

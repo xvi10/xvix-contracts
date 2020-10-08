@@ -11,7 +11,7 @@ describe("Latte", function() {
   let latte
 
   beforeEach(async () => {
-    const fixtures = await loadFixtures(wallet)
+    const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
   })
 
