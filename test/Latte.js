@@ -1,12 +1,12 @@
 const { expect, use } = require("chai")
-const { MockProvider, solidity } = require("ethereum-waffle")
+const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { mineBlock, increaseTime } = require("./shared/utilities")
 
 use(solidity)
 
 describe("Latte", function() {
-  const provider = new MockProvider()
+  const provider = waffle.provider
   const [wallet] = provider.getWallets()
   let latte
 

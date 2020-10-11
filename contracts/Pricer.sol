@@ -35,12 +35,20 @@ contract Pricer is IPricer {
 
     function update() external override returns (bool) {
         uint32 t2 = getLastBlockTime();
+        if (t2 == 0) {
+            return false;
+        }
+
         bool inNextInterval = t2 - _t1 > MIN_INTERVAL; // overflow is desired
         if (!inNextInterval) {
             return false;
         }
 
         uint256 p2 = _currentPrice();
+        if (p2 == 0) {
+            return false;
+        }
+
         uint224 averagePrice0;
         uint224 averagePrice1;
         if (p0 != 0 && p1 != 0) {

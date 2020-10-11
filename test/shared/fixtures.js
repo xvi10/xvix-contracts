@@ -38,6 +38,8 @@ async function loadFixtures(provider, wallet) {
 
   await pool.setMarket(market.address);
 
+  await latte.approve(router.address, ethers.constants.MaxUint256)
+
   return { latte, router, pair, pricer, shopper, pool, market, cafe }
 }
 
