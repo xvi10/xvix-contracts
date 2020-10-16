@@ -15,7 +15,6 @@ contract Cafe {
     uint256 public constant MINTABLE_BASIS_POINTS = 50;
     uint256 public constant FEE_BASIS_POINTS = 100;
     uint256 public constant MAX_BASIS_POINTS = 10000;
-    uint256 public constant Q112 = 2**112;
 
     address public immutable latte;
     address public immutable pricer;
@@ -55,19 +54,11 @@ contract Cafe {
         return maxSupply.sub(currentSupply);
     }
 
-    function getMintableAmount(uint256 value) public view returns (uint256) {
-        uint256 lastPrice = uint256(IPricer(pricer).lastPrice());
-        if (lastPrice == 0) {
-            return 0;
-        }
-        return value.mul(Q112).div(lastPrice);
-    }
-
     function mint() external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value");
         require(!IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
 
-        uint256 mintable = getMintableAmount(msg.value);
+        uint256 mintable = IPricer(pricer).tokensForEth(msg.value);
         require(mintable > 0, "Cafe: sell price not available");
 
         uint256 maxMintable = getMaxMintableAmount();

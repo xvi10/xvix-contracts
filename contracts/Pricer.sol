@@ -10,6 +10,7 @@ contract Pricer is IPricer {
     using SafeMath for uint256;
 
     uint256 public constant MIN_INTERVAL = 30 minutes;
+    uint256 public constant Q112 = 2**112;
 
     address public immutable pair;
     bool public immutable use0;
@@ -51,6 +52,7 @@ contract Pricer is IPricer {
 
         uint224 averagePrice0;
         uint224 averagePrice1;
+
         if (p0 != 0 && p1 != 0) {
             averagePrice0 = uint224((p1 - p0) / (_t1 - _t0)); // overflow is desired
             averagePrice1 = uint224((p2 - p1) / (t2 - _t1)); // overflow is desired
@@ -92,6 +94,20 @@ contract Pricer is IPricer {
         }
 
         return _hasDecreasingPrice;
+    }
+
+    function tokensForEth(uint256 amountIn) external view override returns (uint256) {
+        if (_lastPrice == 0) {
+            return 0;
+        }
+        return amountIn.mul(Q112).div(_lastPrice);
+    }
+
+    function ethForTokens(uint256 amountIn) external view override returns (uint256) {
+        if (_lastPrice == 0) {
+            return 0;
+        }
+        return amountIn.mul(_lastPrice).div(Q112);
     }
 
     function hasStalePricing() public view returns (bool) {

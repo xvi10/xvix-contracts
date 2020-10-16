@@ -21,7 +21,19 @@ async function buyTokens({ router, wallet, weth, token, amountETH }) {
   )
 }
 
+async function sellTokens({ router, wallet, weth, token, amountToken }) {
+  await token.approve(router.address, amountToken)
+  await router.swapExactTokensForETH(
+    amountToken,
+    0,
+    [token.address, weth.address],
+    wallet.address,
+    ethers.constants.MaxUint256
+  )
+}
+
 module.exports = {
   addLiquidityETH,
-  buyTokens
+  buyTokens,
+  sellTokens
 }

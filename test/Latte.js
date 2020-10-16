@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { mineBlock, increaseTime } = require("./shared/utilities")
+const { increaseTime } = require("./shared/utilities")
 
 use(solidity)
 

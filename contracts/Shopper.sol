@@ -14,7 +14,6 @@ contract Shopper {
     uint256 public constant BURNABLE_BASIS_POINTS = 50;
     uint256 public constant FEE_BASIS_POINTS = 100;
     uint256 public constant MAX_BASIS_POINTS = 10000;
-    uint256 public constant Q112 = 2**112;
 
     address public latte;
     address public pricer;
@@ -52,32 +51,25 @@ contract Shopper {
         return currentSupply.sub(minSupply);
     }
 
-    function getEthReturnedAmount(uint256 value) public view returns (uint256) {
-        uint256 lastPrice = uint256(IPricer(pricer).lastPrice());
-        if (lastPrice == 0) {
-            return 0;
-        }
-        return value.mul(lastPrice).div(Q112);
-    }
-
-    function burn(uint256 value) external payable returns (bool) {
-        require(value > 0, "Shopper: insufficient value");
+    function burn(uint256 tokensIn) external payable returns (bool) {
+        require(tokensIn > 0, "Shopper: insufficient value");
         require(!IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
 
         uint256 maxBurnable = getMaxBurnableAmount();
         require(maxBurnable > 0, "Shopper: latte fully bought");
-        require(value <= maxBurnable, "Shopper: amount to buy exceeds allowed limit");
+        require(tokensIn <= maxBurnable, "Shopper: amount to buy exceeds allowed limit");
 
-        uint256 ethReturned = getEthReturnedAmount(value);
-        require(ethReturned <= address(this).balance, "Shopper: insufficient ETH to fulfill request");
+        uint256 amountETH = IPricer(pricer).ethForTokens(tokensIn);
+        require(amountETH > 0, "Shopper: buy price not available");
+        require(amountETH <= address(this).balance, "Shopper: insufficient ETH to fulfill request");
 
         uint256 burnBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS);
-        uint256 toBurn = value.mul(burnBasisPoints).div(MAX_BASIS_POINTS);
+        uint256 toBurn = tokensIn.mul(burnBasisPoints).div(MAX_BASIS_POINTS);
         ILatte(latte).burn(msg.sender, toBurn);
 
-        uint256 toCashier = value.sub(toBurn);
+        uint256 toCashier = tokensIn.sub(toBurn);
         IERC20(latte).transferFrom(msg.sender, cashier, toCashier);
 
-        address(uint160(msg.sender)).transfer(ethReturned);
+        address(uint160(msg.sender)).transfer(amountETH);
     }
 }

@@ -21,7 +21,7 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
-  const latte = await deployContract("Latte", [expandDecimals(1000, 18)])
+  const latte = await deployContract("Latte", [expandDecimals(10000, 18)])
   const weth = await deployContract("WETH", [])
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
