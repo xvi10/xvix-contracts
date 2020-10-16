@@ -3,7 +3,7 @@ const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals } = require("./shared/utilities")
-const { addLiquidityETH } = require("./shared/uniswap")
+const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 
 const Pricer = require("../artifacts/Pricer.json")
 
@@ -11,8 +11,9 @@ use(solidity)
 
 describe("Pricer", function() {
   const provider = waffle.provider
-  const [wallet] = provider.getWallets()
+  const [wallet, user] = provider.getWallets()
   let latte
+  let weth
   let router
   let pricer
   let pair
@@ -20,6 +21,7 @@ describe("Pricer", function() {
   beforeEach(async () => {
     const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
+    weth = fixtures.weth
     router = fixtures.router
     pair = fixtures.pair
     await addLiquidityETH({
@@ -44,6 +46,24 @@ describe("Pricer", function() {
     expect(await pricer.p1()).eq(0)
     expect(await pricer.t1()).eq(0)
     expect(await pricer.lastPrice()).eq(0)
-    await pricer.update()
+
+    await buyTokens({
+      router,
+      wallet,
+      weth,
+      token: latte,
+      amountETH: expandDecimals(1, 18)
+    })
+    await buyTokens({
+      router,
+      wallet,
+      weth,
+      token: latte,
+      amountETH: expandDecimals(1, 18)
+    })
+
+    console.log('p1', (await pricer.p1()).toString())
+    console.log('t1', (await pricer.t1()).toString())
+    console.log('lastprice', (await pricer.lastPrice()).toString())
   })
 })

@@ -11,6 +11,17 @@ async function addLiquidityETH({ router, wallet, token, amountToken, amountETH }
   )
 }
 
+async function buyTokens({ router, wallet, weth, token, amountETH }) {
+  await router.swapExactETHForTokens(
+    0,
+    [weth.address, token.address],
+    wallet.address,
+    ethers.constants.MaxUint256,
+    { value: amountETH }
+  )
+}
+
 module.exports = {
-  addLiquidityETH
+  addLiquidityETH,
+  buyTokens
 }
