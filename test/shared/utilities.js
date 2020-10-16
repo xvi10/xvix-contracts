@@ -2,8 +2,8 @@ function bigNumberify(n) {
   return ethers.BigNumber.from(n)
 }
 
-function expandTo18Decimals(n) {
-  return bigNumberify(n).mul(bigNumberify(10).pow(18))
+function expandDecimals(n, decimals) {
+  return bigNumberify(n).mul(bigNumberify(10).pow(decimals))
 }
 
 async function send(provider, method, params = []) {
@@ -20,7 +20,7 @@ async function increaseTime(provider, seconds) {
 
 module.exports = {
   bigNumberify,
-  expandTo18Decimals,
+  expandDecimals,
   mineBlock,
   increaseTime
 }

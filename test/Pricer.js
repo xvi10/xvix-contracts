@@ -1,8 +1,11 @@
+const { deployContract } = require("ethereum-waffle")
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { mineBlock, increaseTime, expandTo18Decimals } = require("./shared/utilities")
+const { expandDecimals } = require("./shared/utilities")
 const { addLiquidityETH } = require("./shared/uniswap")
+
+const Pricer = require("../artifacts/Pricer.json")
 
 use(solidity)
 
@@ -18,15 +21,17 @@ describe("Pricer", function() {
     const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
     router = fixtures.router
-    pricer = fixtures.pricer
     pair = fixtures.pair
     await addLiquidityETH({
       router,
       wallet,
       token: latte,
-      amountToken: expandTo18Decimals(10),
-      amountETH: expandTo18Decimals(4)
+      amountToken: expandDecimals(10, 18),
+      amountETH: expandDecimals(4, 18)
     })
+
+    pricer = await deployContract(wallet, Pricer, [pair.address, latte.address])
+    await latte.setPricer(pricer.address)
   })
 
   it("sets use0", async () => {

@@ -1,4 +1,5 @@
 async function addLiquidityETH({ router, wallet, token, amountToken, amountETH }) {
+  await token.approve(router.address, amountToken)
   await router.addLiquidityETH(
     token.address,
     amountToken,
