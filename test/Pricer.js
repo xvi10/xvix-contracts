@@ -2,7 +2,7 @@ const { deployContract } = require("ethereum-waffle")
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { expandDecimals, increaseTime, mineBlock } = require("./shared/utilities")
+const { expandDecimals, increaseTime, mineBlock, gasUsed } = require("./shared/utilities")
 const { addLiquidityETH, buyTokens, sellTokens } = require("./shared/uniswap")
 
 const Pricer = require("../artifacts/Pricer.json")
@@ -52,8 +52,11 @@ describe("Pricer", function() {
     // pricer.update is invoked on latte transfers
     // buyTokens should be called twice since the transfer happens
     // before prices are updated in the uniswap pool
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx0 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx1 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    // log gasUsed to check the additional gas needed between txns
+    console.log("tx0 gasUsed", (await gasUsed(provider, tx0)).toString())
+    console.log("tx1 gasUsed", (await gasUsed(provider, tx1)).toString())
 
     expect(await pricer.p0()).eq(0)
     expect(await pricer.t0()).eq(0)
@@ -64,8 +67,11 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx2 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx3 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    // log gasUsed to check the additional gas needed between txns
+    console.log("tx2 gasUsed", (await gasUsed(provider, tx2)).toString())
+    console.log("tx3 gasUsed", (await gasUsed(provider, tx3)).toString())
 
     expect(await pricer.p0()).gt(0)
     expect(await pricer.t0()).gt(0)
@@ -76,8 +82,11 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx4 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx5 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    // log gasUsed to check the additional gas needed between txns
+    console.log("tx4 gasUsed", (await gasUsed(provider, tx4)).toString())
+    console.log("tx5 gasUsed", (await gasUsed(provider, tx5)).toString())
 
     expect(await pricer.p0()).gt(0)
     expect(await pricer.t0()).gt(0)

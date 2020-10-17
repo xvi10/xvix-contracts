@@ -1,6 +1,6 @@
 async function addLiquidityETH({ router, wallet, token, amountToken, amountETH }) {
   await token.approve(router.address, amountToken)
-  await router.addLiquidityETH(
+  return await router.addLiquidityETH(
     token.address,
     amountToken,
     amountToken,
@@ -12,7 +12,7 @@ async function addLiquidityETH({ router, wallet, token, amountToken, amountETH }
 }
 
 async function buyTokens({ router, wallet, weth, token, amountETH }) {
-  await router.swapExactETHForTokens(
+  return await router.swapExactETHForTokens(
     0,
     [weth.address, token.address],
     wallet.address,
@@ -23,7 +23,7 @@ async function buyTokens({ router, wallet, weth, token, amountETH }) {
 
 async function sellTokens({ router, wallet, weth, token, amountToken }) {
   await token.approve(router.address, amountToken)
-  await router.swapExactTokensForETH(
+  return await router.swapExactTokensForETH(
     amountToken,
     0,
     [token.address, weth.address],

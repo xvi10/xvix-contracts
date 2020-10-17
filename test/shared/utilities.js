@@ -18,9 +18,14 @@ async function increaseTime(provider, seconds) {
   await send(provider, "evm_increaseTime", [seconds])
 }
 
+async function gasUsed(provider, tx) {
+  return (await provider.getTransactionReceipt(tx.hash)).gasUsed
+}
+
 module.exports = {
   bigNumberify,
   expandDecimals,
   mineBlock,
-  increaseTime
+  increaseTime,
+  gasUsed
 }
