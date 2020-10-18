@@ -4,6 +4,7 @@ const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, increaseTime, mineBlock, gasUsed } = require("./shared/utilities")
 const { addLiquidityETH, buyTokens, sellTokens } = require("./shared/uniswap")
+const { expectBetween } = require("./shared/waffle")
 
 const Pricer = require("../artifacts/Pricer.json")
 
@@ -100,22 +101,18 @@ describe("Pricer", function() {
     // use ranges to compare instead of eq because there will be slight variations in the
     // different block.timestamps used for calculations between runs
     // 2450000000000000000 is 2.45, which is close to 1000 / 400 = 2.5
-    expect(await pricer.tokensForEth(amountIn)).gt("2450000000000000000")
-    expect(await pricer.tokensForEth(amountIn)).lt("2451000000000000000")
+    expectBetween(await pricer.tokensForEth(amountIn), "2450000000000000000", "2451000000000000000")
     // 408000000000000000 is 0.408, which is close to 400 / 1000 = 0.4
-    expect(await pricer.ethForTokens(amountIn)).gt("408000000000000000")
-    expect(await pricer.ethForTokens(amountIn)).lt("408100000000000000")
+    expectBetween(await pricer.ethForTokens(amountIn), "408000000000000000", "408100000000000000")
 
     await increaseTime(provider, 40 * 60)
     await buyTokens({ router, wallet, weth, token: latte, amountETH })
     await buyTokens({ router, wallet, weth, token: latte, amountETH })
 
     // 2426000000000000000 is 2.426, the tokens to be received should decrease
-    expect(await pricer.tokensForEth(amountIn)).gt("2426000000000000000")
-    expect(await pricer.tokensForEth(amountIn)).lt("2427000000000000000")
+    expectBetween(await pricer.tokensForEth(amountIn), "2426000000000000000", "2427000000000000000")
     // 412000000000000000 is 0.412, the eth to be received should increase
-    expect(await pricer.ethForTokens(amountIn)).gt("412000000000000000")
-    expect(await pricer.ethForTokens(amountIn)).lt("412100000000000000")
+    expectBetween(await pricer.ethForTokens(amountIn), "412000000000000000", "412100000000000000")
 
     expect(await pricer.hasIncreasingPrice()).eq(true)
     expect(await pricer.hasDecreasingPrice()).eq(false)
@@ -173,22 +170,18 @@ describe("Pricer", function() {
     // use ranges to compare instead of eq because there will be slight variations in the
     // different block.timestamps used for calculations between runs
     // 2520000000000000000 is 2.52, which is close to 1000 / 400 = 2.5
-    expect(await pricer.tokensForEth(amountIn)).gt("2520000000000000000")
-    expect(await pricer.tokensForEth(amountIn)).lt("2521000000000000000")
+    expectBetween(await pricer.tokensForEth(amountIn), "2520000000000000000", "2521000000000000000")
     // 396700000000000000 is 0.3967, which is close to 400 / 1000 = 0.4
-    expect(await pricer.ethForTokens(amountIn)).gt("396800000000000000")
-    expect(await pricer.ethForTokens(amountIn)).lt("396900000000000000")
+    expectBetween(await pricer.ethForTokens(amountIn), "396800000000000000", "396900000000000000")
 
     await increaseTime(provider, 40 * 60)
     await sellTokens({ router, wallet, weth, token: latte, amountToken })
     await sellTokens({ router, wallet, weth, token: latte, amountToken })
 
     // 2530000000000000000 is 2.53, the tokens to be received should increase
-    expect(await pricer.tokensForEth(amountIn)).gt("2530000000000000000")
-    expect(await pricer.tokensForEth(amountIn)).lt("2531000000000000000")
+    expectBetween(await pricer.tokensForEth(amountIn), "2530000000000000000", "2531000000000000000")
     // 395200000000000000 is 0.3952, the eth to be received should decrease
-    expect(await pricer.ethForTokens(amountIn)).gt("395200000000000000")
-    expect(await pricer.ethForTokens(amountIn)).lt("395300000000000000")
+    expectBetween(await pricer.ethForTokens(amountIn), "395200000000000000", "395300000000000000")
 
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(true)
