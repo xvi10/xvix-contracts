@@ -12,7 +12,7 @@ contract Shopper {
     using SafeMath for uint256;
 
     uint256 public constant BURNABLE_BASIS_POINTS = 50; // 0.5%
-    uint256 public constant MAX_FEE_BASIS_POINTS = 100; // 5%
+    uint256 public constant MAX_FEE_BASIS_POINTS = 500; // 5%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public latte;
@@ -42,7 +42,7 @@ contract Shopper {
 
     function setFee(uint256 _basisPoints) external {
         require(msg.sender == gov, "Shopper: forbidden");
-        require(_basisPoints < MAX_FEE_BASIS_POINTS, "Shopper: fee exceeds allowed limit");
+        require(_basisPoints <= MAX_FEE_BASIS_POINTS, "Shopper: fee exceeds allowed limit");
         feeBasisPoints = _basisPoints;
     }
 
