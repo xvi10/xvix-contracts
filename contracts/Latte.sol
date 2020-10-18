@@ -29,21 +29,13 @@ contract Latte is IERC20, ILatte {
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
 
-    uint256 private _totalSupply;
-    uint256 private _supplySnapshot;
+    uint256 public override totalSupply;
+    uint256 public override supplySnapshot;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
         _mint(msg.sender, initialSupply);
         _update();
-    }
-
-    function totalSupply() public view override returns (uint256) {
-        return _totalSupply;
-    }
-
-    function supplySnapshot() public view override returns (uint256) {
-        return _supplySnapshot;
     }
 
     function balanceOf(address _account) public view override returns (uint256) {
@@ -158,7 +150,7 @@ contract Latte is IERC20, ILatte {
     function _update() private {
         uint256 blockTime = block.timestamp;
         if (blockTime.sub(latestBlockTime) > MIN_INTERVAL) {
-            _supplySnapshot = _totalSupply;
+            supplySnapshot = totalSupply;
             latestBlockTime = blockTime;
         }
 
@@ -170,7 +162,7 @@ contract Latte is IERC20, ILatte {
     function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: mint to the zero address");
 
-        _totalSupply = _totalSupply.add(_amount);
+        totalSupply = totalSupply.add(_amount);
         balances[_account] = balances[_account].add(_amount);
         emit Transfer(address(0), _account, _amount);
     }
@@ -179,7 +171,7 @@ contract Latte is IERC20, ILatte {
         require(_account != address(0), "Latte: burn from the zero address");
 
         balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
-        _totalSupply = _totalSupply.sub(_amount);
+        totalSupply = totalSupply.sub(_amount);
         emit Transfer(_account, address(0), _amount);
     }
 

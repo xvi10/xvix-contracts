@@ -11,17 +11,17 @@ import "./interfaces/IPricer.sol";
 contract Shopper {
     using SafeMath for uint256;
 
-    uint256 public constant BURNABLE_BASIS_POINTS = 50;
-    uint256 public constant FEE_BASIS_POINTS = 100;
-    uint256 public constant MAX_BASIS_POINTS = 10000;
+    uint256 public constant BURNABLE_BASIS_POINTS = 50; // 0.5%
+    uint256 public constant MAX_FEE_BASIS_POINTS = 100; // 5%
+    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public latte;
     address public pricer;
-    address public gov;
-
     address public shopper;
-    address public reserve;
+
+    address public gov;
     address public cashier;
+    uint256 public feeBasisPoints = 100; // 1%
 
     constructor(address _latte, address _pricer) public {
         latte = _latte;
@@ -40,9 +40,15 @@ contract Shopper {
         gov = _gov;
     }
 
+    function setFee(uint256 _basisPoints) external {
+        require(msg.sender == gov, "Shopper: forbidden");
+        require(_basisPoints < MAX_FEE_BASIS_POINTS, "Shopper: fee exceeds allowed limit");
+        feeBasisPoints = _basisPoints;
+    }
+
     function getMaxBurnableAmount() public view returns (uint256) {
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(BURNABLE_BASIS_POINTS).div(MAX_BASIS_POINTS);
+        uint256 delta = supply.mul(BURNABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         uint256 minSupply = supply.sub(delta);
         uint256 currentSupply = IERC20(latte).totalSupply();
         if (currentSupply <= minSupply) {
@@ -63,8 +69,8 @@ contract Shopper {
         require(amountETH > 0, "Shopper: buy price not available");
         require(amountETH <= address(this).balance, "Shopper: insufficient ETH to fulfill request");
 
-        uint256 burnBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS);
-        uint256 toBurn = tokensIn.mul(burnBasisPoints).div(MAX_BASIS_POINTS);
+        uint256 burnBasisPoints = BASIS_POINTS_DIVISOR.sub(feeBasisPoints);
+        uint256 toBurn = tokensIn.mul(burnBasisPoints).div(BASIS_POINTS_DIVISOR);
         ILatte(latte).burn(msg.sender, toBurn);
 
         uint256 toCashier = tokensIn.sub(toBurn);

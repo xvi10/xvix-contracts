@@ -10,19 +10,22 @@ contract Pricer is IPricer {
     using SafeMath for uint256;
 
     uint256 public constant MIN_INTERVAL = 30 minutes;
-    uint256 public constant Q112 = 2**112;
+    uint256 public constant Q112 = 2**112; // uniswap price multiplier
 
-    address public immutable pair;
-    bool public immutable use0;
+    address public immutable pair; // address of uniswap pair
+    bool public immutable use0; // true if token0 of the uniswap pair is latte
 
-    uint256 public p0;
-    uint256 public p1;
+    // n is the current interval
+    uint256 public cp0; // cumulative price at interval n-2
+    uint256 public cp1; // cumulative price at interval n-1
 
-    uint32 private _t0; // uses single storage slot
-    uint32 private _t1; // uses single storage slot
-    bool private _hasIncreasingPrice; // uses single storage slot
-    bool private _hasDecreasingPrice; // uses single storage slot
+    // uses single storage slot
+    uint32 private _t0; // start time of interval n-2
+    uint32 private _t1; // start time of interval n-1
+    bool private _hasIncreasingPrice;
+    bool private _hasDecreasingPrice;
 
+    // records p * Q112, where 1 latte = p eth
     uint224 private _lastPrice;
 
     constructor(address _pair, address _latte) public {
@@ -35,7 +38,7 @@ contract Pricer is IPricer {
     }
 
     function update() external override returns (bool) {
-        uint32 t2 = getLastBlockTime();
+        uint32 t2 = getLastTradedTime();
         if (t2 == 0) {
             return false;
         }
@@ -53,14 +56,14 @@ contract Pricer is IPricer {
         uint224 averagePrice0;
         uint224 averagePrice1;
 
-        if (p0 != 0 && p1 != 0) {
-            averagePrice0 = uint224((p1 - p0) / (_t1 - _t0)); // overflow is desired
-            averagePrice1 = uint224((p2 - p1) / (t2 - _t1)); // overflow is desired
+        if (cp0 != 0 && cp1 != 0) {
+            averagePrice0 = uint224((cp1 - cp0) / (_t1 - _t0)); // overflow is desired
+            averagePrice1 = uint224((p2 - cp1) / (t2 - _t1)); // overflow is desired
             _updatePricingDirections(averagePrice0, averagePrice1);
         }
 
-        p0 = p1;
-        p1 = p2;
+        cp0 = cp1;
+        cp1 = p2;
         _t0 = _t1;
         _t1 = t2;
         _lastPrice = averagePrice1;
@@ -111,12 +114,12 @@ contract Pricer is IPricer {
     }
 
     function hasStalePricing() public view returns (bool) {
-        uint32 lastBlockTime = getLastBlockTime();
+        uint32 lastTradedTime = getLastTradedTime();
         uint32 blockTime = uint32(block.timestamp % 2 ** 32);
-        return blockTime - lastBlockTime > MIN_INTERVAL; // overflow is desired
+        return blockTime - lastTradedTime > MIN_INTERVAL; // overflow is desired
     }
 
-    function getLastBlockTime() public view returns (uint32) {
+    function getLastTradedTime() public view returns (uint32) {
         (, , uint32 time) = IUniswapV2Pair(pair).getReserves();
         return time;
     }

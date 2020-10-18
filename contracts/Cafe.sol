@@ -12,9 +12,9 @@ import "./interfaces/IPool.sol";
 contract Cafe {
     using SafeMath for uint256;
 
-    uint256 public constant MINTABLE_BASIS_POINTS = 50;
-    uint256 public constant FEE_BASIS_POINTS = 100;
-    uint256 public constant MAX_BASIS_POINTS = 10000;
+    uint256 public constant MINTABLE_BASIS_POINTS = 50; // 0.5%
+    uint256 public constant MAX_FEE_BASIS_POINTS = 500; // 5%
+    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable latte;
     address public immutable pricer;
@@ -23,6 +23,7 @@ contract Cafe {
 
     address public gov;
     address public cashier;
+    uint256 public feeBasisPoints = 100; // 1%
 
     constructor(address _latte, address _pricer, address _shopper, address _pool) public {
         latte = _latte;
@@ -43,9 +44,15 @@ contract Cafe {
         gov = _gov;
     }
 
+    function setFee(uint256 _basisPoints) external {
+        require(msg.sender == gov, "Cafe: forbidden");
+        require(_basisPoints <= MAX_FEE_BASIS_POINTS, "Cafe: fee exceeds allowed limit");
+        feeBasisPoints = _basisPoints;
+    }
+
     function getMaxMintableAmount() public view returns (uint256) {
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(MAX_BASIS_POINTS);
+        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         uint256 maxSupply = supply.add(delta);
         uint256 currentSupply = IERC20(latte).totalSupply();
         if (currentSupply >= maxSupply) {
@@ -68,8 +75,8 @@ contract Cafe {
 
         ILatte(latte).mint(msg.sender, mintable);
 
-        uint256 shopperBasisPoints = MAX_BASIS_POINTS.sub(FEE_BASIS_POINTS).div(2);
-        uint256 toShopper = msg.value.mul(shopperBasisPoints).div(MAX_BASIS_POINTS);
+        uint256 shopperBasisPoints = BASIS_POINTS_DIVISOR.sub(feeBasisPoints).div(2);
+        uint256 toShopper = msg.value.mul(shopperBasisPoints).div(BASIS_POINTS_DIVISOR);
         uint256 toPool = toShopper;
         uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 

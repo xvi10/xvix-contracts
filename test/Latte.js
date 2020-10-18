@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { increaseTime } = require("./shared/utilities")
+const { increaseTime, expandDecimals } = require("./shared/utilities")
 
 use(solidity)
 
@@ -17,6 +17,10 @@ describe("Latte", function() {
 
   it("inits latestBlockTime", async () => {
     expect(await latte.latestBlockTime()).gt(0)
+  })
+
+  it("inits supplySnapshot", async () => {
+    expect(await latte.supplySnapshot()).eq(expandDecimals(10000, 18))
   })
 
   it("updates latestBlockTime", async () => {
