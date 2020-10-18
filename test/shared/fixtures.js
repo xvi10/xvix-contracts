@@ -31,7 +31,20 @@ async function loadFixtures(provider, wallet) {
   const pairAddress = await factory.getPair(latte.address, weth.address)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
 
-  return { latte, weth, router, pair }
+  const pricer = await deployContract("Pricer", [pair.address, latte.address])
+  const shopper = await deployContract("Shopper", [latte.address, pricer.address])
+  const pool = await deployContract("Pool", [latte.address, pricer.address])
+  const market = await deployContract("Market", [latte.address, pool.address, router.address])
+  const cafe = await deployContract("Cafe", [latte.address, pricer.address, shopper.address, pool.address])
+
+  await latte.setCafe(cafe.address)
+  await latte.setShopper(shopper.address)
+  await latte.setPricer(pricer.address)
+  await latte.setPool(pool.address)
+
+  await pool.setMarket(market.address)
+
+  return { latte, weth, router, pair, pricer, shopper, pool, market, cafe }
 }
 
 module.exports = {

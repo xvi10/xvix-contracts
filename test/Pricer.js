@@ -25,13 +25,11 @@ describe("Pricer", function() {
     weth = fixtures.weth
     router = fixtures.router
     pair = fixtures.pair
+    pricer = fixtures.pricer
 
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
-
-    pricer = await deployContract(wallet, Pricer, [pair.address, latte.address])
-    await latte.setPricer(pricer.address)
   })
 
   it("sets use0", async () => {
@@ -223,12 +221,14 @@ describe("Pricer", function() {
     await increaseTime(provider, 20 * 60)
     await mineBlock(provider)
 
+    expect(await pricer.hasStalePricing()).eq(false)
     expect(await pricer.hasIncreasingPrice()).eq(true)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 20 * 60)
     await mineBlock(provider)
 
+    expect(await pricer.hasStalePricing()).eq(true)
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(false)
   })
