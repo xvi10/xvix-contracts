@@ -62,14 +62,14 @@ contract Cafe {
     }
 
     function mint() external payable returns (bool) {
-        require(msg.value > 0, "Cafe: insufficient value sent");
+        require(msg.value > 0, "Cafe: insufficient value in");
         require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
-
-        uint256 mintable = IPricer(pricer).tokensForEth(msg.value);
-        require(mintable > 0, "Cafe: sell price not available");
 
         uint256 maxMintable = getMaxMintableAmount();
         require(maxMintable > 0, "Cafe: latte fully sold");
+
+        uint256 mintable = IPricer(pricer).tokensForEth(msg.value);
+        require(mintable > 0, "Cafe: sell price not available");
 
         require(mintable <= maxMintable, "Cafe: amount to sell exceeds allowed limit");
 

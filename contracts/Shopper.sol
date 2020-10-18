@@ -58,8 +58,8 @@ contract Shopper {
     }
 
     function burn(uint256 tokensIn) external payable returns (bool) {
-        require(tokensIn > 0, "Shopper: insufficient value");
-        require(!IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
+        require(tokensIn > 0, "Shopper: insufficient value in");
+        require(IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
 
         uint256 maxBurnable = getMaxBurnableAmount();
         require(maxBurnable > 0, "Shopper: latte fully bought");
