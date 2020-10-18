@@ -62,8 +62,8 @@ contract Cafe {
     }
 
     function mint() external payable returns (bool) {
-        require(msg.value > 0, "Cafe: insufficient value");
-        require(!IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
+        require(msg.value > 0, "Cafe: insufficient value sent");
+        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
 
         uint256 mintable = IPricer(pricer).tokensForEth(msg.value);
         require(mintable > 0, "Cafe: sell price not available");
@@ -80,8 +80,12 @@ contract Cafe {
         uint256 toPool = toShopper;
         uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 
-        address(uint160(shopper)).transfer(toShopper);
+        (bool success,  ) = shopper.call{value: toShopper}("");
+        require(success, "Cafe: transfer to shopper failed");
+
         IPool(pool).fund{value: toPool}();
-        address(uint160(cashier)).transfer(toCashier);
+
+        (success,  ) = cashier.call{value: toCashier}("");
+        require(success, "Cafe: transfer to cashier failed");
     }
 }

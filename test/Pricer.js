@@ -99,9 +99,9 @@ describe("Pricer", function() {
     const amountIn = expandDecimals(1, 18)
     // use ranges to compare instead of eq because there will be slight variations in the
     // different block.timestamps used for calculations between runs
-    // 2450000000000000000 is 2.45, which is close to 1000 / 400 = 2.5
+    // 2.45, which is close to 1000 / 400 = 2.5
     expectBetween(await pricer.tokensForEth(amountIn), "2450000000000000000", "2451000000000000000")
-    // 408000000000000000 is 0.408, which is close to 400 / 1000 = 0.4
+    // 0.408, which is close to 400 / 1000 = 0.4
     expectBetween(await pricer.ethForTokens(amountIn), "408000000000000000", "408100000000000000")
 
     await increaseTime(provider, 40 * 60)
@@ -111,9 +111,9 @@ describe("Pricer", function() {
     expect(await pricer.lastPrice()).gt(lastPrice0)
 
     const lastPrice1 = await pricer.lastPrice()
-    // 2426000000000000000 is 2.426, the tokens to be received should decrease
+    // 2.426, the tokens to be received should decrease
     expectBetween(await pricer.tokensForEth(amountIn), "2426000000000000000", "2427000000000000000")
-    // 412000000000000000 is 0.412, the eth to be received should increase
+    // 0.412, the eth to be received should increase
     expectBetween(await pricer.ethForTokens(amountIn), "412000000000000000", "412100000000000000")
 
     expect(await pricer.hasIncreasingPrice()).eq(true)

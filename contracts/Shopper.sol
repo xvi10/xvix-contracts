@@ -76,6 +76,9 @@ contract Shopper {
         uint256 toCashier = tokensIn.sub(toBurn);
         IERC20(latte).transferFrom(msg.sender, cashier, toCashier);
 
-        address(uint160(msg.sender)).transfer(amountETH);
+        (bool success,  ) = msg.sender.call{value: amountETH}("");
+        require(success, "Pool: transfer failed");
     }
+
+    receive() external payable {}
 }

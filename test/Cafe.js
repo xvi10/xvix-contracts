@@ -1,7 +1,9 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { increaseTime } = require("./shared/utilities")
+const { expandDecimals, increaseTime } = require("./shared/utilities")
+const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
+const { expectBetween } = require("./shared/waffle")
 
 use(solidity)
 
@@ -12,6 +14,9 @@ describe("Cafe", function() {
   let weth
   let router
   let cafe
+  let pricer
+  let shopper
+  let pool
 
   beforeEach(async () => {
     const fixtures = await loadFixtures(provider, wallet)
@@ -19,6 +24,9 @@ describe("Cafe", function() {
     weth = fixtures.weth
     router = fixtures.router
     cafe = fixtures.cafe
+    pricer = fixtures.pricer
+    shopper = fixtures.shopper
+    pool = fixtures.pool
   })
 
   it("inits cashier", async () => {
@@ -81,5 +89,59 @@ describe("Cafe", function() {
     await cafe.setFee("500")
     await expect(cafe.setFee("501"))
       .to.be.revertedWith("Cafe: fee exceeds allowed limit")
+  })
+
+  it("mint fails if value is zero", async () => {
+    await expect(cafe.mint({ value: "0" }))
+      .to.be.revertedWith("Cafe: insufficient value sent")
+  })
+
+  it("mint fails unless price is increasing", async () => {
+    await expect(cafe.mint({ value: "100" }))
+      .to.be.revertedWith("Cafe: not open for selling")
+  })
+
+  it("mints", async () => {
+    const amountToken = expandDecimals(1000, 18)
+    const amountETH = expandDecimals(400, 18)
+    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
+
+    const buyAmount = expandDecimals(1, 18)
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+
+    await increaseTime(provider, 40 * 60)
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+
+    await increaseTime(provider, 40 * 60)
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+
+    const cashier = "0xa63c44249f0f7dd3b0571f7d96427a677a497f68"
+    await cafe.setCashier(cashier)
+
+    // 50 tokens allowed to be minted, 0.5% of the total supply of 10000
+    expect(await cafe.getMaxMintableAmount()).eq("50000000000000000000")
+    expect(await latte.balanceOf(user0.address)).eq(0)
+    await cafe.connect(user0).mint({ value: expandDecimals(1, 18) })
+    const minted = await latte.balanceOf(user0.address)
+    // 2.45, which is close to 1000 / 400 = 2.5
+    expectBetween(minted, "2450000000000000000", "2451000000000000000")
+
+    const mintable = expandDecimals(50, 18).sub(minted)
+    expect(await cafe.getMaxMintableAmount()).eq(mintable)
+
+    const shopperBalance = await provider.getBalance(shopper.address)
+    const poolBalance = await provider.getBalance(pool.address)
+    const cashierBalance = await provider.getBalance(cashier)
+    expect(shopperBalance).eq("495000000000000000")
+    expect(poolBalance).eq("495000000000000000")
+    expect(cashierBalance).eq("10000000000000000")
+
+    expect(shopperBalance.add(poolBalance).add(cashierBalance)).eq(expandDecimals(1, 18))
+
+    await expect(cafe.connect(user0).mint({ value: expandDecimals(20, 18) }))
+      .to.be.revertedWith("Cafe: amount to sell exceeds allowed limit")
   })
 })

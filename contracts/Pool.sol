@@ -157,7 +157,8 @@ contract Pool is IPool {
         }
 
         claimed[slot][_account] = true;
-        address(uint160(_account)).transfer(claimable);
+        (bool success,  ) = _account.call{value: claimable}("");
+        require(success, "Pool: transfer failed");
 
         return claimable;
     }
