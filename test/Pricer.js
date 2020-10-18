@@ -97,6 +97,7 @@ describe("Pricer", function() {
     expect(await pricer.hasIncreasingPrice()).eq(true)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
+    const lastPrice0 = await pricer.lastPrice()
     const amountIn = expandDecimals(1, 18)
     // use ranges to compare instead of eq because there will be slight variations in the
     // different block.timestamps used for calculations between runs
@@ -109,6 +110,9 @@ describe("Pricer", function() {
     await buyTokens({ router, wallet, weth, token: latte, amountETH })
     await buyTokens({ router, wallet, weth, token: latte, amountETH })
 
+    expect(await pricer.lastPrice()).gt(lastPrice0)
+
+    const lastPrice1 = await pricer.lastPrice()
     // 2426000000000000000 is 2.426, the tokens to be received should decrease
     expectBetween(await pricer.tokensForEth(amountIn), "2426000000000000000", "2427000000000000000")
     // 412000000000000000 is 0.412, the eth to be received should increase
@@ -116,6 +120,13 @@ describe("Pricer", function() {
 
     expect(await pricer.hasIncreasingPrice()).eq(true)
     expect(await pricer.hasDecreasingPrice()).eq(false)
+
+    await increaseTime(provider, 20 * 60)
+    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+
+    // lastPrice should not change because the current interval has not passed
+    expect(await pricer.lastPrice()).eq(lastPrice1)
   })
 
   it("updates when price is decreasing", async () => {

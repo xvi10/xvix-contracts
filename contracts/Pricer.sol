@@ -138,6 +138,7 @@ contract Pricer is IPricer {
         _hasDecreasingPrice = true;
     }
 
+    // returns p * Q112, where 1 latte = p eth
     function _currentPrice() private view returns (uint256) {
         return use0 ? IUniswapV2Pair(pair).price0CumulativeLast() : IUniswapV2Pair(pair).price1CumulativeLast();
     }
