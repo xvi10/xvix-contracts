@@ -80,12 +80,12 @@ contract Cafe {
         uint256 toPool = toShopper;
         uint256 toCashier = msg.value.sub(toShopper).sub(toPool);
 
-        (bool success,  ) = shopper.call{value: toShopper}("");
+        (bool success,) = shopper.call{value: toShopper}("");
         require(success, "Cafe: transfer to shopper failed");
 
         IPool(pool).fund{value: toPool}();
 
-        (success,  ) = cashier.call{value: toCashier}("");
+        (success,) = cashier.call{value: toCashier}("");
         require(success, "Cafe: transfer to cashier failed");
     }
 }

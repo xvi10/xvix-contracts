@@ -123,6 +123,34 @@ describe("Pool", function() {
     expect(ethReceived1).eq(reward.mul(shares1).div(totalShares))
   })
 
+  it("mints with pool.swapETHForExactTokens", async () => {
+    const amountToken = expandDecimals(1000, 18)
+    const amountETH = expandDecimals(400, 18)
+    const sellAmount = expandDecimals(1, 18)
+    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
+    await decreasePrice({ provider, router, wallet, latte, weth, sellAmount })
+
+    const slot = await pool.latestSlot()
+
+    // user0 buys
+    expect(await pool.shares(slot, user0.address)).eq("0")
+    expect(await latte.balanceOf(user0.address)).eq("0")
+
+    const buyAmount0 = "2516000000000000000"
+    await market.connect(user0).swapETHForExactTokens(
+      buyAmount0,
+      [weth.address, latte.address],
+      user0.address,
+      ethers.constants.MaxUint256,
+      { value: expandDecimals(2, 18) }
+    )
+    expect(await pool.latestSlot()).eq(slot)
+    const shares0 = await latte.balanceOf(user0.address)
+    expect(shares0).eq(buyAmount0)
+    expect(await pool.shares(slot, user0.address)).eq(buyAmount0)
+    expect(await pool.totalShares(slot)).eq(buyAmount0)
+  })
+
   it("does not mint if price is not decreasing", async () => {
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)

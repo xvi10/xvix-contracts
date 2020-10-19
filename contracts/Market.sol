@@ -28,8 +28,8 @@ contract Market {
     {
         require(path[path.length - 1] == latte, "Market: path does not end with latte");
         amounts = IUniswapV2Router(uniswapRouter).swapExactETHForTokens{value: msg.value}(amountOutMin, path, to, deadline);
-        uint256 value = amounts[amounts.length - 1];
-        IPool(pool).mint(msg.sender, value);
+        uint256 amount = amounts[amounts.length - 1];
+        IPool(pool).mint(msg.sender, amount);
     }
 
     function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
@@ -39,7 +39,14 @@ contract Market {
     {
         require(path[path.length - 1] == latte, "Market: path does not end with latte");
         amounts = IUniswapV2Router(uniswapRouter).swapETHForExactTokens{value: msg.value}(amountOut, path, to, deadline);
-        uint256 value = amounts[amounts.length - 1];
-        IPool(pool).mint(msg.sender, value);
+        uint256 amount = amounts[amounts.length - 1];
+        IPool(pool).mint(msg.sender, amount);
+
+        if (msg.value > amounts[0]) {
+            (bool success,) = msg.sender.call{value: msg.value.sub(amounts[0])}("");
+            require(success, "Market: transfer failed");
+        }
     }
+
+    receive() external payable {}
 }
