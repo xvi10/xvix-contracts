@@ -61,6 +61,7 @@ describe("Pool", function() {
   })
 
   it("mints", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
@@ -98,7 +99,6 @@ describe("Pool", function() {
     const totalShares = shares0.add(shares1)
     expect(await pool.totalShares(slot)).eq(totalShares)
 
-    await pool.fund({ value: expandDecimals(20, 18) })
     // increase time by 24 hours and 1 minute
     await increaseTime(provider, 24 * 60 * 60 + 60)
 
@@ -124,6 +124,7 @@ describe("Pool", function() {
   })
 
   it("mints with pool.swapETHForExactTokens", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
@@ -152,6 +153,7 @@ describe("Pool", function() {
   })
 
   it("does not mint if price is not decreasing", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const buyAmount = expandDecimals(1, 18)
@@ -168,7 +170,6 @@ describe("Pool", function() {
     expect(await pool.shares(slot, user0.address)).eq("0")
     expect(await pool.totalShares(slot)).eq("0")
 
-    await pool.fund({ value: expandDecimals(20, 18) })
     // increase time by 24 hours and 1 minute
     await increaseTime(provider, 24 * 60 * 60 + 60)
 
@@ -184,6 +185,7 @@ describe("Pool", function() {
   })
 
   it("burns", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
@@ -224,6 +226,7 @@ describe("Pool", function() {
   })
 
   it("does not reduce totalShares if interval has passed", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
@@ -267,6 +270,7 @@ describe("Pool", function() {
   })
 
   it("rolls over shares", async () => {
+    await pool.fund({ value: expandDecimals(20, 18) })
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
@@ -313,6 +317,14 @@ describe("Pool", function() {
 
     expect(await pool.slots(user0.address)).eq(nextSlot)
     expect(await pool.shares(nextSlot, user0.address)).eq(shares0.mul(5000).div(10000).add(newlyBought))
+
+    await increaseTime(provider, 24 * 60 * 60 + 60)
+    await pool.moveToNextSlot()
+
+    const lastReward = expandDecimals(20, 18).mul(200).div(10000)
+    const remainingCapital = expandDecimals(20, 18).sub(lastReward)
+    const reward = remainingCapital.mul(100).div(10000)
+    expect(await pool.rewards(nextSlot)).eq(reward)
   })
 
   it("does not give bonus reward unless price is increasing", async () => {
