@@ -51,9 +51,9 @@ contract Pool is IPool {
         capital = capital.add(msg.value);
     }
 
-    function claim() external returns (uint256) {
+    function claim() external {
         _moveToNextSlot();
-        return _claim(msg.sender);
+        _claim(msg.sender);
     }
 
     function mint(address _account, uint256 _amount) external override {
@@ -145,29 +145,27 @@ contract Pool is IPool {
         distributedCapital = distributedCapital.add(reward);
     }
 
-    function _claim(address _account) private returns (uint256) {
+    function _claim(address _account) private {
         uint256 slot = slots[_account];
         if (slot == 0) {
-            return 0;
+            return;
         }
 
         if (rewards[slot] == 0 || shares[slot][_account] == 0 || totalShares[slot] == 0) {
-            return 0;
+            return;
         }
 
         if (claimed[slot][_account]) {
-            return 0;
+            return;
         }
 
         uint256 claimable = rewards[slot].mul(shares[slot][_account]).div(totalShares[slot]);
         if (claimable == 0) {
-            return 0;
+            return;
         }
 
         claimed[slot][_account] = true;
         (bool success,  ) = _account.call{value: claimable}("");
         require(success, "Pool: transfer failed");
-
-        return claimable;
     }
 }

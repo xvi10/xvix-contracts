@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { expandDecimals, increaseTime } = require("./shared/utilities")
+const { expandDecimals, increaseTime, bigNumberify } = require("./shared/utilities")
 const { addLiquidityETH, sellTokens, buyTokens } = require("./shared/uniswap")
 const { expectBetween } = require("./shared/waffle")
 
@@ -86,23 +86,92 @@ describe("Pool", function() {
     await buyTokens({ router: market, wallet: user0, weth, token: latte, amount: buyAmount0 })
     expect(await pool.latestSlot()).eq(latestSlot)
 
-    const expectedRewards0 = await latte.balanceOf(user0.address)
+    const shares0 = await latte.balanceOf(user0.address)
     // 2.516, slightly less than the shopper's price of ~2.52 because of slippage
-    expectBetween(expectedRewards0, "2516000000000000000", "2517000000000000000")
-    expect(await pool.shares(latestSlot, user0.address)).eq(expectedRewards0)
-    expect(await pool.totalShares(latestSlot)).eq(expectedRewards0)
+    expectBetween(shares0, "2516000000000000000", "2517000000000000000")
+    expect(await pool.shares(latestSlot, user0.address)).eq(shares0)
+    expect(await pool.totalShares(latestSlot)).eq(shares0)
 
     // user1 buys
     expect(await pool.shares(latestSlot, user1.address)).eq("0")
     expect(await latte.balanceOf(user1.address)).eq("0")
 
-    const buyAmount1 = expandDecimals(2, 18)
+    const buyAmount1 = expandDecimals(3, 18)
     await buyTokens({ router: market, wallet: user1, weth, token: latte, amount: buyAmount1 })
     expect(await pool.latestSlot()).eq(latestSlot)
 
-    const expectedRewards1 = await latte.balanceOf(user1.address)
-    expectBetween(expectedRewards1, "4994000000000000000", "4995000000000000000")
-    expect(await pool.shares(latestSlot, user1.address)).eq(expectedRewards1)
-    expect(await pool.totalShares(latestSlot)).eq(expectedRewards0.add(expectedRewards1))
+    const shares1 = await latte.balanceOf(user1.address)
+    expectBetween(shares1, "7473000000000000000", "7474000000000000000")
+    expect(await pool.shares(latestSlot, user1.address)).eq(shares1)
+
+    const totalShares = shares0.add(shares1)
+    expect(await pool.totalShares(latestSlot)).eq(totalShares)
+
+    const fundAmount = expandDecimals(20, 18)
+    await pool.fund({ value: fundAmount })
+    // increase time by 25 hours
+    await increaseTime(provider, 25 * 60 * 60)
+
+    const userBalance0 = await provider.getBalance(user0.address)
+    const tx0 = await pool.connect(user0).claim()
+    const receipt0 = await provider.getTransactionReceipt(tx0.hash)
+    const txFee0 = tx0.gasPrice.mul(receipt0.gasUsed)
+    const ethReceived0 = (await provider.getBalance(user0.address)).sub(userBalance0).add(txFee0)
+
+    // expect rewards to be 20 * 0.02 = 0.4 ETH, there is a bonus since this is the first distribution
+    const reward = bigNumberify("400000000000000000")
+    expect(await pool.rewards(latestSlot)).eq(reward)
+    expect(await pool.distributedCapital()).eq(reward)
+    expect(ethReceived0).eq(reward.mul(shares0).div(totalShares))
+
+    const userBalance1 = await provider.getBalance(user1.address)
+    const tx1 = await pool.connect(user1).claim()
+    const receipt1 = await provider.getTransactionReceipt(tx1.hash)
+    const txFee1 = tx1.gasPrice.mul(receipt1.gasUsed)
+    const ethReceived1 = (await provider.getBalance(user1.address)).sub(userBalance1).add(txFee1)
+    expect(ethReceived1).eq(reward.mul(shares1).div(totalShares))
+  })
+
+  it("does not mint if price is not decreasing", async () => {
+    const amountToken = expandDecimals(1000, 18)
+    const amountETH = expandDecimals(400, 18)
+    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
+
+    const buyAmount = expandDecimals(1, 18)
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+
+    await increaseTime(provider, 40 * 60)
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+
+    await increaseTime(provider, 40 * 60)
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+
+    expect(await pricer.hasDecreasingPrice()).eq(false)
+
+    const latestSlot = await pool.latestSlot()
+    const buyAmount0 = expandDecimals(1, 18)
+    await buyTokens({ router: market, wallet: user0, weth, token: latte, amount: buyAmount0 })
+    expect(await pool.latestSlot()).eq(latestSlot)
+    expectBetween(await latte.balanceOf(user0.address), "2413000000000000000", "2414000000000000000")
+    expect(await pool.shares(latestSlot, user0.address)).eq("0")
+    expect(await pool.totalShares(latestSlot)).eq("0")
+
+    const fundAmount = expandDecimals(20, 18)
+    await pool.fund({ value: fundAmount })
+    // increase time by 25 hours
+    await increaseTime(provider, 25 * 60 * 60)
+
+    const userBalance0 = await provider.getBalance(user0.address)
+    const tx0 = await pool.connect(user0).claim()
+    const receipt0 = await provider.getTransactionReceipt(tx0.hash)
+    const txFee0 = tx0.gasPrice.mul(receipt0.gasUsed)
+    const ethReceived0 = (await provider.getBalance(user0.address)).sub(userBalance0).add(txFee0)
+
+    expect(await pool.rewards(latestSlot)).eq("0")
+    expect(await pool.distributedCapital()).eq("0")
+    expect(ethReceived0).eq("0")
   })
 })
