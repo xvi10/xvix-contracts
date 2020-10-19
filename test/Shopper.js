@@ -104,7 +104,8 @@ describe("Shopper", function() {
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
     const sellAmount = expandDecimals(1, 18)
-    await decreasePrice({ provider, router, wallet, latte, weth, amountToken, amountETH, sellAmount })
+    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
+    await decreasePrice({ provider, router, wallet, latte, weth, sellAmount })
 
     const cashier = "0xa63c44249f0f7dd3b0571f7d96427a677a497f68"
     await shopper.setCashier(cashier)

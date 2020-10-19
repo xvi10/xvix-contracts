@@ -14,7 +14,6 @@ contract Pool is IPool {
     uint256 public constant MIN_INTERVAL = 24 hours;
     uint256 public constant REWARD_BASIS_POINTS = 100;
     uint256 public constant BONUS_REWARD_BASIS_POINTS = 100;
-    uint256 public constant MIN_ROLLOVER_INTERVAL = 7 days;
     uint256 public constant ROLLOVER_BASIS_POINTS = 5000;
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
@@ -51,6 +50,10 @@ contract Pool is IPool {
         capital = capital.add(msg.value);
     }
 
+    function moveToNextSlot() external {
+        _moveToNextSlot();
+    }
+
     function claim() external {
         _moveToNextSlot();
         _claim(msg.sender);
@@ -82,11 +85,10 @@ contract Pool is IPool {
         _claim(_account);
 
         uint256 slot = slots[_account];
-        if (slot != latestSlot) {
-            return;
+        if (slot == latestSlot) {
+            totalShares[slot] = totalShares[slot].sub(shares[slot][_account]);
         }
 
-        totalShares[slot] = totalShares[slot].sub(shares[slot][_account]);
         shares[slot][_account] = 0;
     }
 
@@ -97,10 +99,6 @@ contract Pool is IPool {
         }
 
         if (slot == nextSlot) {
-            return;
-        }
-
-        if (nextSlot < slot.add(MIN_ROLLOVER_INTERVAL)) {
             return;
         }
 
