@@ -86,8 +86,8 @@ contract Pool is IPool {
             return;
         }
 
-        shares[slot][_account] = 0;
         totalShares[slot] = totalShares[slot].sub(shares[slot][_account]);
+        shares[slot][_account] = 0;
     }
 
     function _rollover(address _account, uint256 nextSlot) private {

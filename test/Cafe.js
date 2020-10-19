@@ -4,6 +4,7 @@ const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, increaseTime } = require("./shared/utilities")
 const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 const { expectBetween } = require("./shared/waffle")
+const { increasePrice } = require("./shared/pricer")
 
 use(solidity)
 
@@ -104,19 +105,8 @@ describe("Cafe", function() {
   it("mints", async () => {
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
-    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
-
     const buyAmount = expandDecimals(1, 18)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await increasePrice({ provider, router, wallet, latte, weth, amountToken, amountETH, buyAmount })
 
     const cashier = "0xa63c44249f0f7dd3b0571f7d96427a677a497f68"
     await cafe.setCashier(cashier)

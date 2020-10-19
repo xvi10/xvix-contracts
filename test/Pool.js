@@ -4,6 +4,7 @@ const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, increaseTime, bigNumberify } = require("./shared/utilities")
 const { addLiquidityETH, sellTokens, buyTokens } = require("./shared/uniswap")
 const { expectBetween } = require("./shared/waffle")
+const { increasePrice, decreasePrice } = require("./shared/pricer")
 
 use(solidity)
 
@@ -62,19 +63,8 @@ describe("Pool", function() {
   it("mints", async () => {
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
-    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
-
     const sellAmount = expandDecimals(1, 18)
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await decreasePrice({ provider, router, wallet, latte, weth, amountToken, amountETH, sellAmount })
 
     const latestSlot = await pool.latestSlot()
 
@@ -135,19 +125,8 @@ describe("Pool", function() {
   it("does not mint if price is not decreasing", async () => {
     const amountToken = expandDecimals(1000, 18)
     const amountETH = expandDecimals(400, 18)
-    await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
-
     const buyAmount = expandDecimals(1, 18)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-
-    await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await increasePrice({ provider, router, wallet, latte, weth, amountToken, amountETH, buyAmount })
 
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
@@ -173,5 +152,44 @@ describe("Pool", function() {
     expect(await pool.rewards(latestSlot)).eq("0")
     expect(await pool.distributedCapital()).eq("0")
     expect(ethReceived0).eq("0")
+  })
+
+  it("burns", async () => {
+    const amountToken = expandDecimals(1000, 18)
+    const amountETH = expandDecimals(400, 18)
+    const sellAmount = expandDecimals(1, 18)
+    await decreasePrice({ provider, router, wallet, latte, weth, amountToken, amountETH, sellAmount })
+
+    const latestSlot = await pool.latestSlot()
+
+    // user0 buys
+    expect(await pool.shares(latestSlot, user0.address)).eq("0")
+    expect(await latte.balanceOf(user0.address)).eq("0")
+
+    const buyAmount0 = expandDecimals(1, 18)
+    await buyTokens({ router: market, wallet: user0, weth, token: latte, amount: buyAmount0 })
+    expect(await pool.latestSlot()).eq(latestSlot)
+
+    const shares0 = await latte.balanceOf(user0.address)
+    // 2.516, slightly less than the shopper's price of ~2.52 because of slippage
+    expectBetween(shares0, "2516000000000000000", "2517000000000000000")
+    expect(await pool.shares(latestSlot, user0.address)).eq(shares0)
+    expect(await pool.totalShares(latestSlot)).eq(shares0)
+
+    // user1 buys
+    expect(await pool.shares(latestSlot, user1.address)).eq("0")
+    expect(await latte.balanceOf(user1.address)).eq("0")
+
+    const buyAmount1 = expandDecimals(3, 18)
+    await buyTokens({ router: market, wallet: user1, weth, token: latte, amount: buyAmount1 })
+    expect(await pool.latestSlot()).eq(latestSlot)
+
+    const shares1 = await latte.balanceOf(user1.address)
+    expectBetween(shares1, "7473000000000000000", "7474000000000000000")
+    expect(await pool.shares(latestSlot, user1.address)).eq(shares1)
+
+    await latte.connect(user0).transfer(user1.address, "10")
+    expect(await pool.shares(latestSlot, user0.address)).eq("0")
+    expect(await pool.totalShares(latestSlot)).eq(shares1)
   })
 })
