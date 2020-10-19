@@ -12,14 +12,15 @@ contract Pool is IPool {
     using SafeMath for uint256;
 
     uint256 public constant MIN_INTERVAL = 24 hours;
-    uint256 public constant REWARDS_BASIS_POINTS = 100;
-    uint256 public constant BONUS_REWARD_INTERVAL = 7 days;
-    uint256 public constant BONUS_REWARD_BASIS_POINTS = 5000;
+    uint256 public constant REWARD_BASIS_POINTS = 100;
+    uint256 public constant BONUS_REWARD_BASIS_POINTS = 100;
+    uint256 public constant MIN_ROLLOVER_INTERVAL = 7 days;
+    uint256 public constant ROLLOVER_BASIS_POINTS = 5000;
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable latte;
-    address public immutable pricer;
     address public immutable gov;
+    address public pricer;
     address public market;
 
     uint256 public latestSlot;
@@ -31,6 +32,7 @@ contract Pool is IPool {
     mapping (uint256 => uint256) public totalShares;
     mapping (uint256 => mapping(address => uint256)) public shares;
     mapping (uint256 => mapping(address => bool)) public claimed;
+    mapping (uint256 => uint224) public prices;
 
     constructor(address _latte, address _pricer) public {
         latte = _latte;
@@ -98,11 +100,11 @@ contract Pool is IPool {
             return;
         }
 
-        if (nextSlot < slot.add(BONUS_REWARD_INTERVAL)) {
+        if (nextSlot < slot.add(MIN_ROLLOVER_INTERVAL)) {
             return;
         }
 
-        shares[nextSlot][_account] = shares[slot][_account].mul(BONUS_REWARD_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        shares[nextSlot][_account] = shares[slot][_account].mul(ROLLOVER_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
     }
 
     function _moveToNextSlot() private {
@@ -113,6 +115,7 @@ contract Pool is IPool {
 
         _distribute(latestSlot);
         latestSlot = nextSlot;
+        prices[latestSlot] = IPricer(pricer).lastPrice();
     }
 
     function _getNextSlot() private view returns (uint256) {
@@ -132,7 +135,12 @@ contract Pool is IPool {
             return;
         }
 
-        uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 rewardBasisPoints = REWARD_BASIS_POINTS;
+        if (IPricer(pricer).lastPrice() > prices[slot]) {
+            rewardBasisPoints = rewardBasisPoints.add(BONUS_REWARD_BASIS_POINTS);
+        }
+
+        uint256 reward = capital.sub(distributedCapital).mul(rewardBasisPoints).div(BASIS_POINTS_DIVISOR);
         rewards[slot] = reward;
         distributedCapital = distributedCapital.add(reward);
     }
