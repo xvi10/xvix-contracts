@@ -47,12 +47,12 @@ describe("Pricer", function() {
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
-    const amountETH = expandDecimals(1, 18)
+    const buyAmount = expandDecimals(1, 18)
     // pricer.update is invoked on latte transfers
     // buyTokens should be called twice since the transfer happens
     // before prices are updated in the uniswap pool
-    const tx0 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    const tx1 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx0 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    const tx1 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
     // log gasUsed to check the additional gas needed between txns
     console.log("tx0 gasUsed", (await gasUsed(provider, tx0)).toString())
     console.log("tx1 gasUsed", (await gasUsed(provider, tx1)).toString())
@@ -66,8 +66,8 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    const tx2 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    const tx3 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx2 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    const tx3 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
     // log gasUsed to check the additional gas needed between txns
     console.log("tx2 gasUsed", (await gasUsed(provider, tx2)).toString())
     console.log("tx3 gasUsed", (await gasUsed(provider, tx3)).toString())
@@ -81,8 +81,8 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    const tx4 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    const tx5 = await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const tx4 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    const tx5 = await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
     // log gasUsed to check the additional gas needed between txns
     console.log("tx4 gasUsed", (await gasUsed(provider, tx4)).toString())
     console.log("tx5 gasUsed", (await gasUsed(provider, tx5)).toString())
@@ -105,8 +105,8 @@ describe("Pricer", function() {
     expectBetween(await pricer.ethForTokens(amountIn), "408000000000000000", "408100000000000000")
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     expect(await pricer.lastPrice()).gt(lastPrice0)
 
@@ -120,8 +120,8 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 20 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     // lastPrice should not change because the current interval has not passed
     expect(await pricer.lastPrice()).eq(lastPrice1)
@@ -136,12 +136,12 @@ describe("Pricer", function() {
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
-    const amountToken = expandDecimals(1, 18)
+    const sellAmount = expandDecimals(1, 18)
     // pricer.update is invoked on latte transfers
     // sellTokens should be called twice since the transfer happens
     // before prices are updated in the uniswap pool
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     expect(await pricer.cp0()).eq(0)
     expect(await pricer.t0()).eq(0)
@@ -152,8 +152,8 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     expect(await pricer.cp0()).gt(0)
     expect(await pricer.t0()).gt(0)
@@ -164,8 +164,8 @@ describe("Pricer", function() {
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     expect(await pricer.cp0()).gt(0)
     expect(await pricer.t0()).gt(0)
@@ -184,8 +184,8 @@ describe("Pricer", function() {
     expectBetween(await pricer.ethForTokens(amountIn), "396800000000000000", "396900000000000000")
 
     await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     // 2530000000000000000 is 2.53, the tokens to be received should increase
     expectBetween(await pricer.tokensForEth(amountIn), "2530000000000000000", "2531000000000000000")
@@ -197,23 +197,23 @@ describe("Pricer", function() {
   })
 
   it("resets hasIncreasingPrice if there are no recent trades", async () => {
-    const amountETH = expandDecimals(1, 18)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    const buyAmount = expandDecimals(1, 18)
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     expect(await pricer.hasIncreasingPrice()).eq(false)
     expect(await pricer.hasDecreasingPrice()).eq(false)
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     expect(await pricer.hasIncreasingPrice()).eq(true)
     expect(await pricer.hasDecreasingPrice()).eq(false)

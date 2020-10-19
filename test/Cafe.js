@@ -107,16 +107,16 @@ describe("Cafe", function() {
     await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
 
     const buyAmount = expandDecimals(1, 18)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     await increaseTime(provider, 40 * 60)
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
-    await buyTokens({ router, wallet, weth, token: latte, amountETH: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
+    await buyTokens({ router, wallet, weth, token: latte, amount: buyAmount })
 
     const cashier = "0xa63c44249f0f7dd3b0571f7d96427a677a497f68"
     await cafe.setCashier(cashier)

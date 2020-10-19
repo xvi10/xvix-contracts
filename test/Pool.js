@@ -2,7 +2,7 @@ const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, increaseTime } = require("./shared/utilities")
-const { addLiquidityETH, sellTokens } = require("./shared/uniswap")
+const { addLiquidityETH, sellTokens, buyTokens } = require("./shared/uniswap")
 const { expectBetween } = require("./shared/waffle")
 
 use(solidity)
@@ -65,16 +65,44 @@ describe("Pool", function() {
     await addLiquidityETH({ router, wallet, token: latte, amountToken, amountETH })
 
     const sellAmount = expandDecimals(1, 18)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
 
     await increaseTime(provider, 40 * 60)
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
-    await sellTokens({ router, wallet, weth, token: latte, amountToken: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+    await sellTokens({ router, wallet, weth, token: latte, amount: sellAmount })
+
+    const latestSlot = await pool.latestSlot()
+
+    // user0 buys
+    expect(await pool.shares(latestSlot, user0.address)).eq("0")
+    expect(await latte.balanceOf(user0.address)).eq("0")
+
+    const buyAmount0 = expandDecimals(1, 18)
+    await buyTokens({ router: market, wallet: user0, weth, token: latte, amount: buyAmount0 })
+    expect(await pool.latestSlot()).eq(latestSlot)
+
+    const expectedRewards0 = await latte.balanceOf(user0.address)
+    // 2.516, slightly less than the shopper's price of ~2.52 because of slippage
+    expectBetween(expectedRewards0, "2516000000000000000", "2517000000000000000")
+    expect(await pool.shares(latestSlot, user0.address)).eq(expectedRewards0)
+    expect(await pool.totalShares(latestSlot)).eq(expectedRewards0)
+
+    // user1 buys
+    expect(await pool.shares(latestSlot, user1.address)).eq("0")
+    expect(await latte.balanceOf(user1.address)).eq("0")
+
+    const buyAmount1 = expandDecimals(2, 18)
+    await buyTokens({ router: market, wallet: user1, weth, token: latte, amount: buyAmount1 })
+    expect(await pool.latestSlot()).eq(latestSlot)
+
+    const expectedRewards1 = await latte.balanceOf(user1.address)
+    expectBetween(expectedRewards1, "4994000000000000000", "4995000000000000000")
+    expect(await pool.shares(latestSlot, user1.address)).eq(expectedRewards1)
+    expect(await pool.totalShares(latestSlot)).eq(expectedRewards0.add(expectedRewards1))
   })
-
 })
