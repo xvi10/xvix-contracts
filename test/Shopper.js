@@ -133,6 +133,7 @@ describe("Shopper", function() {
       .to.be.revertedWith("Latte: burn amount exceeds balance")
 
     const tokensIn = expandDecimals(1, 18)
+    await latte.connect(user1).approve(shopper.address, tokensIn)
     await latte.transfer(user1.address, tokensIn)
     expect(await latte.balanceOf(user1.address)).eq(tokensIn)
 

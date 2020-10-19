@@ -15,7 +15,7 @@ contract Pool is IPool {
     uint256 public constant REWARDS_BASIS_POINTS = 100;
     uint256 public constant BONUS_REWARD_INTERVAL = 7 days;
     uint256 public constant BONUS_REWARD_BASIS_POINTS = 5000;
-    uint256 public constant MAX_BASIS_POINTS = 10000;
+    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable latte;
     address public immutable pricer;
@@ -102,7 +102,7 @@ contract Pool is IPool {
             return;
         }
 
-        shares[nextSlot][_account] = shares[slot][_account].mul(BONUS_REWARD_BASIS_POINTS).div(MAX_BASIS_POINTS);
+        shares[nextSlot][_account] = shares[slot][_account].mul(BONUS_REWARD_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
     }
 
     function _moveToNextSlot() private {
@@ -132,7 +132,7 @@ contract Pool is IPool {
             return;
         }
 
-        uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(MAX_BASIS_POINTS);
+        uint256 reward = capital.sub(distributedCapital).mul(REWARDS_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         rewards[slot] = reward;
         distributedCapital = distributedCapital.add(reward);
     }

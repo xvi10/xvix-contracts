@@ -48,9 +48,6 @@ contract Latte is IERC20, ILatte {
     }
 
     function allowance(address _owner, address _spender) public view override returns (uint256) {
-        if (_inTransferFromAllowList(_spender)) {
-            return uint256(-1);
-        }
         return allowances[_owner][_spender];
     }
 
@@ -60,9 +57,7 @@ contract Latte is IERC20, ILatte {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
-        if (!_inTransferFromAllowList(msg.sender)) {
-            _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
-        }
+        _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
         _transfer(_sender, _recipient, _amount);
 
         return true;
@@ -126,10 +121,6 @@ contract Latte is IERC20, ILatte {
 
     function update() external {
         _update();
-    }
-
-    function _inTransferFromAllowList(address _account) private view returns (bool) {
-        return _account == shopper;
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
