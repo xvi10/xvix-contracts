@@ -12,6 +12,9 @@ import "./interfaces/IPool.sol";
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
 
+    uint256 public constant BURN_BASIS_POINTS = 500; // 5%
+    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
+
     uint256 public constant MIN_INTERVAL = 30 minutes;
     string public constant name = "Latte";
     string public constant symbol = "LATTE";
@@ -25,6 +28,7 @@ contract Latte is IERC20, ILatte {
     address public shopper;
     address public pricer;
     address public pool;
+    address public pair;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
@@ -107,6 +111,12 @@ contract Latte is IERC20, ILatte {
         pool = _pool;
     }
 
+    function setPair(address _pair) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        require(pair == address(0), "Latte: pair already set");
+        pair = _pair;
+    }
+
     function mint(address _account, uint256 _amount) external override returns(bool) {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
@@ -132,7 +142,13 @@ contract Latte is IERC20, ILatte {
         emit Transfer(_sender, _recipient, _amount);
 
         if (pool != address(0)) {
-            IPool(pool).burn(_sender);
+            IPool(pool).revokeShares(_sender);
+        }
+
+        bool exempted = msg.sender == shopper || msg.sender == pair;
+        if (IPricer(pricer).hasDecreasingPrice() && !exempted) {
+            uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+            _burn(_sender, burnAmount);
         }
 
         _update();

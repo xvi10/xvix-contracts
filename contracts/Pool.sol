@@ -78,7 +78,7 @@ contract Pool is IPool {
         slots[_account] = latestSlot;
     }
 
-    function burn(address _account) external override {
+    function revokeShares(address _account) external override {
         require(msg.sender == latte, "Pool: forbidden");
 
         _moveToNextSlot();

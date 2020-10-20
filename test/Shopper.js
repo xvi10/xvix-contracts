@@ -127,6 +127,7 @@ describe("Shopper", function() {
     await latte.connect(user1).approve(shopper.address, tokensIn)
     await latte.transfer(user1.address, tokensIn)
     expect(await latte.balanceOf(user1.address)).eq(tokensIn)
+    const burnt = tokensIn.div(10000).mul(500)
 
     // 396700000000000000 is 0.3967, which is close to 400 / 1000 = 0.4
     const ethExpected = await pricer.ethForTokens(tokensIn)
@@ -143,9 +144,9 @@ describe("Shopper", function() {
     const cashierBalance = await latte.balanceOf(cashier)
     expect(cashierBalance).eq("10000000000000000")
 
-    const burnable = expandDecimals(50, 18).sub(tokensIn).add(cashierBalance)
+    const burnable = expandDecimals(50, 18).sub(tokensIn).add(cashierBalance).sub(burnt)
     expect(await shopper.getMaxBurnableAmount()).eq(burnable)
 
-    expect(await latte.totalSupply()).eq(expandDecimals(10000, 18).sub(tokensIn).add(cashierBalance))
+    expect(await latte.totalSupply()).eq(expandDecimals(10000, 18).sub(tokensIn).sub(burnt).add(cashierBalance))
   })
 })

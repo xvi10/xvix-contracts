@@ -41,6 +41,7 @@ async function loadFixtures(provider, wallet) {
   await latte.setShopper(shopper.address)
   await latte.setPricer(pricer.address)
   await latte.setPool(pool.address)
+  await latte.setPair(pair.address)
 
   await pool.setMarket(market.address)
 
