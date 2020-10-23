@@ -16,8 +16,6 @@ import "./interfaces/IUniswapV2ERC20.sol";
 contract Market {
     using SafeMath for uint256;
 
-    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
-
     address public immutable latte;
     address public immutable WETH;
     address public immutable pool;
@@ -81,52 +79,16 @@ contract Market {
             amountETHMin
         );
         address pair = UniswapV2Library.pairFor(factory, token, WETH);
+
+        ILatte(latte).setGuardedTransfer(true);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
+        ILatte(latte).setGuardedTransfer(false);
+
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
         liquidity = IUniswapV2Pair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
-    }
-
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) public virtual ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        IUniswapV2ERC20(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
-        (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
-        (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
-    }
-
-    function removeLiquidityETH(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) public virtual ensure(deadline) returns (uint amountToken, uint amountETH) {
-        (amountToken, amountETH) = removeLiquidity(
-            token,
-            WETH,
-            liquidity,
-            amountTokenMin,
-            amountETHMin,
-            address(this),
-            deadline
-        );
-        TransferHelper.safeTransfer(token, to, amountToken);
-        IWETH(WETH).withdraw(amountETH);
-        TransferHelper.safeTransferETH(to, amountETH);
     }
 
     function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
@@ -165,38 +127,6 @@ contract Market {
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
 
         IPool(pool).mint(msg.sender, amounts[amounts.length - 1]);
-    }
-
-    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        ensure(deadline)
-        returns (uint[] memory amounts)
-    {
-        require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
-        );
-        _swap(amounts, path, address(this));
-        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
-    }
-
-    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-        external
-        ensure(deadline)
-        returns (uint[] memory amounts)
-    {
-        require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
-        TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
-        );
-        _swap(amounts, path, address(this));
-        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
     function _swap(uint[] memory amounts, address[] memory path, address _to) private {

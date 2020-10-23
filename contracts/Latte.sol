@@ -28,6 +28,9 @@ contract Latte is IERC20, ILatte {
     address public pricer;
     address public pool;
     address public pair;
+    address public market;
+
+    bool public guardedTransfer;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
@@ -117,6 +120,17 @@ contract Latte is IERC20, ILatte {
         pair = _pair;
     }
 
+    function setMarket(address _market) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        require(market == address(0), "Latte: market already set");
+        market = _market;
+    }
+
+    function setGuardedTransfer(bool _guardedTransfer) external override {
+        require(msg.sender == market, "Latte: forbidden");
+        guardedTransfer = _guardedTransfer;
+    }
+
     function mint(address _account, uint256 _amount) external override returns(bool) {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
@@ -141,11 +155,11 @@ contract Latte is IERC20, ILatte {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
-        if (pool != address(0)) {
+        if (pool != address(0) && !guardedTransfer) {
             IPool(pool).revokeShares(_sender);
         }
 
-        bool exempted = msg.sender == shopper || msg.sender == pair;
+        bool exempted = guardedTransfer || msg.sender == shopper || msg.sender == pair;
         if (IPricer(pricer).hasDecreasingPrice() && !exempted) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);

@@ -65,7 +65,7 @@ contract Shopper {
         return burnable.sub(burnt);
     }
 
-    function burn(uint256 tokensIn) external payable returns (bool) {
+    function burn(uint256 tokensIn, address receiver) external payable returns (bool) {
         require(tokensIn > 0, "Shopper: insufficient value in");
 
         uint256 maxBurnable = getMaxBurnableAmount();
@@ -86,7 +86,7 @@ contract Shopper {
         uint256 toCashier = tokensIn.sub(toBurn);
         IERC20(latte).transferFrom(msg.sender, cashier, toCashier);
 
-        (bool success,) = msg.sender.call{value: amountETH}("");
+        (bool success,) = receiver.call{value: amountETH}("");
         require(success, "Pool: transfer failed");
     }
 

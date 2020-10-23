@@ -93,12 +93,12 @@ describe("Cafe", function() {
   })
 
   it("mint fails if value is zero", async () => {
-    await expect(cafe.mint({ value: "0" }))
+    await expect(cafe.mint(user0.address, { value: "0" }))
       .to.be.revertedWith("Cafe: insufficient value in")
   })
 
   it("mint fails unless price is increasing", async () => {
-    await expect(cafe.mint({ value: "100" }))
+    await expect(cafe.mint(user0.address, { value: "100" }))
       .to.be.revertedWith("Cafe: latte fully sold")
   })
 
@@ -117,8 +117,8 @@ describe("Cafe", function() {
     // 50 tokens allowed to be minted, 0.5% of the total supply of 10000
     expect(await cafe.getMaxMintableAmount()).eq("50000000000000000000")
     expect(await latte.balanceOf(user0.address)).eq(0)
-    await cafe.connect(user0).mint({ value: expandDecimals(1, 18) })
-    const minted = await latte.balanceOf(user0.address)
+    await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
+    const minted = await latte.balanceOf(user1.address)
     // 2.45, which is close to 1000 / 400 = 2.5
     expectBetween(minted, "2450000000000000000", "2451000000000000000")
     expect(await latte.totalSupply()).eq(expandDecimals(10000, 18).add(minted))
@@ -135,7 +135,7 @@ describe("Cafe", function() {
 
     expect(shopperBalance.add(poolBalance).add(cashierBalance)).eq(expandDecimals(1, 18))
 
-    await expect(cafe.connect(user0).mint({ value: expandDecimals(20, 18) }))
+    await expect(cafe.connect(user0).mint(user0.address, { value: expandDecimals(20, 18) }))
       .to.be.revertedWith("Cafe: amount to sell exceeds allowed limit")
   })
 })

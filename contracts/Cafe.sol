@@ -67,7 +67,7 @@ contract Cafe {
         return maxSupply.sub(currentSupply);
     }
 
-    function mint() external payable returns (bool) {
+    function mint(address receiver) external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value in");
 
         uint256 maxMintable = getMaxMintableAmount();
@@ -78,7 +78,7 @@ contract Cafe {
 
         require(mintable <= maxMintable, "Cafe: amount to sell exceeds allowed limit");
 
-        ILatte(latte).mint(msg.sender, mintable);
+        ILatte(latte).mint(receiver, mintable);
 
         uint256 shopperBasisPoints = BASIS_POINTS_DIVISOR.sub(feeBasisPoints).div(2);
         uint256 toShopper = msg.value.mul(shopperBasisPoints).div(BASIS_POINTS_DIVISOR);

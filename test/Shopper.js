@@ -10,7 +10,7 @@ use(solidity)
 
 describe("Shopper", function() {
   const provider = waffle.provider
-  const [wallet, user0, user1] = provider.getWallets()
+  const [wallet, user0, user1, user2] = provider.getWallets()
   let latte
   let weth
   let router
@@ -91,12 +91,12 @@ describe("Shopper", function() {
   })
 
   it("burn fails if tokensIn is zero", async () => {
-    await expect(shopper.burn(0))
+    await expect(shopper.burn(0, user0.address))
       .to.be.revertedWith("Shopper: insufficient value in")
   })
 
   it("burn fails unless price is decreasing", async () => {
-    await expect(shopper.burn(100))
+    await expect(shopper.burn(100, user0.address))
       .to.be.revertedWith("Shopper: latte fully bought")
   })
 
@@ -115,12 +115,12 @@ describe("Shopper", function() {
     // 50 tokens allowed to be burnt, 0.5% of the total supply of 10000
     expect(await shopper.getMaxBurnableAmount()).eq("50000000000000000000")
 
-    await expect(shopper.connect(user1).burn(expandDecimals(1, 18)))
+    await expect(shopper.connect(user1).burn(expandDecimals(1, 18), user1.address))
       .to.be.revertedWith("Shopper: insufficient ETH to fulfill request")
 
     await wallet.sendTransaction({ to: shopper.address, value: expandDecimals(1, 18) })
 
-    await expect(shopper.connect(user1).burn(expandDecimals(1, 18)))
+    await expect(shopper.connect(user1).burn(expandDecimals(1, 18), user1.address))
       .to.be.revertedWith("Latte: burn amount exceeds balance")
 
     const tokensIn = expandDecimals(1, 18)
@@ -132,11 +132,9 @@ describe("Shopper", function() {
     // 396700000000000000 is 0.3967, which is close to 400 / 1000 = 0.4
     const ethExpected = await pricer.ethForTokens(tokensIn)
     expectBetween(ethExpected, "396800000000000000", "396900000000000000")
-    const userBalance1 = await provider.getBalance(user1.address)
-    const tx = await shopper.connect(user1).burn(tokensIn)
-    const receipt = await provider.getTransactionReceipt(tx.hash)
-    const txFee = tx.gasPrice.mul(receipt.gasUsed)
-    const ethReceived = (await provider.getBalance(user1.address)).sub(userBalance1).add(txFee)
+    const userBalance2 = await provider.getBalance(user2.address)
+    await shopper.connect(user1).burn(tokensIn, user2.address)
+    const ethReceived = (await provider.getBalance(user2.address)).sub(userBalance2)
     expect(ethReceived).eq(ethExpected)
     expect(await latte.balanceOf(user1.address)).eq("0")
 
