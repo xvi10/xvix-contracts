@@ -4,12 +4,13 @@ pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
+import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
 import "./interfaces/IPricer.sol";
 
 
-contract Pool is IPool {
+contract Pool is IPool, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant MIN_INTERVAL = 24 hours;
@@ -60,7 +61,7 @@ contract Pool is IPool {
         _claim(msg.sender);
     }
 
-    function mint(address _account, uint256 _amount) external override {
+    function mint(address _account, uint256 _amount) external override nonReentrant {
         require(msg.sender == market, "Pool: forbidden");
         if (_amount == 0) {
             return;
@@ -79,7 +80,7 @@ contract Pool is IPool {
         slots[_account] = latestSlot;
     }
 
-    function revokeShares(address _account) external override {
+    function revokeShares(address _account) external override nonReentrant {
         require(msg.sender == latte, "Pool: forbidden");
 
         _moveToNextSlot();

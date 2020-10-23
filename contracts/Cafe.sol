@@ -4,13 +4,14 @@ pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
+import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 import "./interfaces/IPool.sol";
 
 
-contract Cafe {
+contract Cafe is ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant MINTABLE_BASIS_POINTS = 50; // 0.5%
@@ -51,7 +52,7 @@ contract Cafe {
         feeBasisPoints = _basisPoints;
     }
 
-    function mint(address receiver) external payable returns (bool) {
+    function mint(address receiver) external payable nonReentrant returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value in");
 
         uint256 maxMintable = getMaxMintableAmount();

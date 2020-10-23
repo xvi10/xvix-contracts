@@ -4,12 +4,13 @@ pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
+import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 
 
-contract Shopper {
+contract Shopper is ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant BURNABLE_BASIS_POINTS = 50; // 0.5%
@@ -50,7 +51,7 @@ contract Shopper {
         feeBasisPoints = _basisPoints;
     }
 
-    function burn(uint256 tokensIn, address receiver) external payable returns (bool) {
+    function burn(uint256 tokensIn, address receiver) external payable nonReentrant returns (bool) {
         require(tokensIn > 0, "Shopper: insufficient value in");
 
         uint256 maxBurnable = getMaxBurnableAmount();

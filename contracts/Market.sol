@@ -4,6 +4,7 @@ pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
+import "./libraries/utils/ReentrancyGuard.sol";
 import "./uniswap/UniswapV2Library.sol";
 import "./uniswap/TransferHelper.sol";
 
@@ -15,7 +16,7 @@ import "./interfaces/IUniswapV2Factory.sol";
 import "./interfaces/IUniswapV2ERC20.sol";
 
 
-contract Market {
+contract Market is ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
@@ -135,7 +136,7 @@ contract Market {
         IPool(pool).mint(msg.sender, amounts[amounts.length - 1]);
     }
 
-    function burn(uint256 iterations, uint256 baseAmount) external {
+    function burn(uint256 iterations, uint256 baseAmount) external nonReentrant {
         require(IERC20(latte).balanceOf(msg.sender) >= baseAmount, "Market: base amount exceeds balance");
         require(IPricer(pricer).hasDecreasingPrice(), "Market: rewards are not available");
 
