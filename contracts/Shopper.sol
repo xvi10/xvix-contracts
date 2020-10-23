@@ -28,6 +28,8 @@ contract Shopper is ReentrancyGuard {
     // tracks the number of tokens burnt for an interval
     mapping (uint256 => uint256) public burnSums;
 
+    event Burn(address indexed from, uint256 value);
+
     constructor(address _latte, address _pricer) public {
         latte = _latte;
         pricer = _pricer;
@@ -74,6 +76,8 @@ contract Shopper is ReentrancyGuard {
 
         (bool success,) = receiver.call{value: amountETH}("");
         require(success, "Pool: transfer failed");
+
+        emit Burn(msg.sender, toBurn);
     }
 
     receive() external payable {}

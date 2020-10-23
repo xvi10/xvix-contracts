@@ -27,6 +27,8 @@ contract Market is ReentrancyGuard {
     address public immutable factory;
     address public immutable pricer;
 
+    event Burn(address indexed from, uint256 value);
+
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, "Market: expired");
         _;
@@ -153,6 +155,8 @@ contract Market is ReentrancyGuard {
 
         ILatte(latte).burn(msg.sender, totalBurn);
         IPool(pool).mint(msg.sender, totalShares);
+
+        emit Burn(msg.sender, totalBurn);
     }
 
     function _swap(uint[] memory amounts, address[] memory path, address _to) private {

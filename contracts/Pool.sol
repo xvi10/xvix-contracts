@@ -35,6 +35,14 @@ contract Pool is IPool, ReentrancyGuard {
     mapping (uint256 => mapping(address => bool)) public claimed;
     mapping (uint256 => uint224) public prices;
 
+    event Distribute(uint256 slot, uint256 value);
+    event Claim(address indexed to, uint256 slot, uint256 value);
+    event NextSlot(uint256 previousSlot, uint256 latestSlot);
+
+    event Rollover(address indexed to, uint256 slot, uint256 value);
+    event Mint(address indexed to, uint256 slot, uint256 value);
+    event Revoke(address indexed from, uint256 slot, uint256 value);
+
     constructor(address _latte, address _pricer) public {
         latte = _latte;
         pricer = _pricer;
@@ -78,20 +86,29 @@ contract Pool is IPool, ReentrancyGuard {
         shares[latestSlot][_account] = shares[latestSlot][_account].add(_amount);
         totalShares[latestSlot] = totalShares[latestSlot].add(_amount);
         slots[_account] = latestSlot;
+
+        emit Mint(_account, latestSlot, _amount);
     }
 
     function revokeShares(address _account) external override nonReentrant {
         require(msg.sender == latte, "Pool: forbidden");
 
+        uint256 slot = slots[_account];
+        uint256 toRevoke = shares[slot][_account];
+        if (toRevoke == 0) {
+            return;
+        }
+
         _moveToNextSlot();
         _claim(_account);
 
-        uint256 slot = slots[_account];
         if (slot == latestSlot) {
-            totalShares[slot] = totalShares[slot].sub(shares[slot][_account]);
+            totalShares[slot] = totalShares[slot].sub(toRevoke);
         }
 
         shares[slot][_account] = 0;
+
+        emit Revoke(_account, slot, toRevoke);
     }
 
     function _rollover(address _account, uint256 nextSlot) private {
@@ -104,7 +121,10 @@ contract Pool is IPool, ReentrancyGuard {
             return;
         }
 
-        shares[nextSlot][_account] = shares[slot][_account].mul(ROLLOVER_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 toRollover = shares[slot][_account].mul(ROLLOVER_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        shares[nextSlot][_account] = toRollover;
+
+        emit Rollover(_account, slot, toRollover);
     }
 
     function _moveToNextSlot() private {
@@ -113,9 +133,13 @@ contract Pool is IPool, ReentrancyGuard {
             return;
         }
 
+        uint256 previousSlot = latestSlot;
+
         _distribute(latestSlot);
         latestSlot = nextSlot;
         prices[latestSlot] = IPricer(pricer).lastPrice();
+
+        emit NextSlot(previousSlot, latestSlot);
     }
 
     function _getNextSlot() private view returns (uint256) {
@@ -143,6 +167,8 @@ contract Pool is IPool, ReentrancyGuard {
         uint256 reward = capital.sub(distributedCapital).mul(rewardBasisPoints).div(BASIS_POINTS_DIVISOR);
         rewards[slot] = reward;
         distributedCapital = distributedCapital.add(reward);
+
+        emit Distribute(slot, reward);
     }
 
     function _claim(address _account) private {
@@ -167,5 +193,7 @@ contract Pool is IPool, ReentrancyGuard {
         claimed[slot][_account] = true;
         (bool success,) = _account.call{value: claimable}("");
         require(success, "Pool: transfer failed");
+
+        emit Claim(_account, slot, claimable);
     }
 }

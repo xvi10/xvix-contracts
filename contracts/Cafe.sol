@@ -27,6 +27,8 @@ contract Cafe is ReentrancyGuard {
     address public cashier;
     uint256 public feeBasisPoints = 100; // 1%
 
+    event Mint(address indexed to, uint256 value);
+
     constructor(address _latte, address _pricer, address _shopper, address _pool) public {
         latte = _latte;
         pricer = _pricer;
@@ -58,12 +60,12 @@ contract Cafe is ReentrancyGuard {
         uint256 maxMintable = getMaxMintableAmount();
         require(maxMintable > 0, "Cafe: latte fully sold");
 
-        uint256 mintable = IPricer(pricer).tokensForEth(msg.value);
-        require(mintable > 0, "Cafe: sell price not available");
+        uint256 toMint = IPricer(pricer).tokensForEth(msg.value);
+        require(toMint > 0, "Cafe: sell price not available");
 
-        require(mintable <= maxMintable, "Cafe: amount to sell exceeds allowed limit");
+        require(toMint <= maxMintable, "Cafe: amount to sell exceeds allowed limit");
 
-        ILatte(latte).mint(receiver, mintable);
+        ILatte(latte).mint(receiver, toMint);
 
         uint256 shopperBasisPoints = BASIS_POINTS_DIVISOR.sub(feeBasisPoints).div(2);
         uint256 toShopper = msg.value.mul(shopperBasisPoints).div(BASIS_POINTS_DIVISOR);
@@ -77,6 +79,8 @@ contract Cafe is ReentrancyGuard {
 
         (success,) = cashier.call{value: toCashier}("");
         require(success, "Cafe: transfer to cashier failed");
+
+        emit Mint(receiver, toMint);
     }
 
     function getMaxMintableAmount() public view returns (uint256) {

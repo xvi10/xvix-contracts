@@ -29,6 +29,8 @@ contract Pricer is IPricer {
     // records p * Q112, where 1 latte = p eth
     uint224 private _lastPrice;
 
+    event Update(uint256 averagePrice0, uint256 averagePrice1);
+
     constructor(address _pair, address _latte) public {
         pair = _pair;
 
@@ -49,8 +51,8 @@ contract Pricer is IPricer {
             return false;
         }
 
-        uint256 p2 = _currentPrice();
-        if (p2 == 0) {
+        uint256 cp2 = _currentCumulativePrice();
+        if (cp2 == 0) {
             return false;
         }
 
@@ -59,12 +61,13 @@ contract Pricer is IPricer {
 
         if (cp0 != 0 && cp1 != 0) {
             averagePrice0 = uint224((cp1 - cp0) / (_t1 - _t0)); // overflow is desired
-            averagePrice1 = uint224((p2 - cp1) / (t2 - _t1)); // overflow is desired
+            averagePrice1 = uint224((cp2 - cp1) / (t2 - _t1)); // overflow is desired
             _updatePricingDirections(averagePrice0, averagePrice1);
+            emit Update(averagePrice0, averagePrice1);
         }
 
         cp0 = cp1;
-        cp1 = p2;
+        cp1 = cp2;
         _t0 = _t1;
         _t1 = t2;
         _lastPrice = averagePrice1;
@@ -143,7 +146,7 @@ contract Pricer is IPricer {
     }
 
     // returns p * Q112, where 1 latte = p eth
-    function _currentPrice() private view returns (uint256) {
+    function _currentCumulativePrice() private view returns (uint256) {
         return use0 ? IUniswapV2Pair(pair).price0CumulativeLast() : IUniswapV2Pair(pair).price1CumulativeLast();
     }
 }
