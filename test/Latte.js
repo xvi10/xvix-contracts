@@ -15,23 +15,23 @@ describe("Latte", function() {
     latte = fixtures.latte
   })
 
-  it("inits latestBlockTime", async () => {
-    expect(await latte.latestBlockTime()).gt(0)
+  it("inits snapshotTime", async () => {
+    expect(await latte.snapshotTime()).gt(0)
   })
 
   it("inits supplySnapshot", async () => {
     expect(await latte.supplySnapshot()).eq(expandDecimals(10000, 18))
   })
 
-  it("updates latestBlockTime", async () => {
-    const blockTime = await latte.latestBlockTime()
+  it("updates snapshotTime", async () => {
+    const blockTime = await latte.snapshotTime()
 
     await increaseTime(provider, 20 * 60)
     await latte.update()
-    expect(await latte.latestBlockTime()).eq(blockTime)
+    expect(await latte.snapshotTime()).eq(blockTime)
 
     await increaseTime(provider, 20 * 60)
     await latte.update()
-    expect(await latte.latestBlockTime()).gt(blockTime)
+    expect(await latte.snapshotTime()).gt(blockTime)
   })
 })

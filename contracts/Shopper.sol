@@ -23,6 +23,9 @@ contract Shopper {
     address public cashier;
     uint256 public feeBasisPoints = 100; // 1%
 
+    // tracks the number of tokens burnt for an interval
+    mapping (uint256 => uint256) public burnSums;
+
     constructor(address _latte, address _pricer) public {
         latte = _latte;
         pricer = _pricer;
@@ -47,19 +50,23 @@ contract Shopper {
     }
 
     function getMaxBurnableAmount() public view returns (uint256) {
-        uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(BURNABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 minSupply = supply.sub(delta);
-        uint256 currentSupply = IERC20(latte).totalSupply();
-        if (currentSupply <= minSupply) {
+        if (!IPricer(pricer).hasDecreasingPrice()) {
             return 0;
         }
-        return currentSupply.sub(minSupply);
+
+        uint256 supply = ILatte(latte).supplySnapshot();
+        uint256 burnable = supply.mul(BURNABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 burnt = burnSums[ILatte(latte).snapshotTime()];
+
+        if (burnt >= burnable) {
+            return 0;
+        }
+
+        return burnable.sub(burnt);
     }
 
     function burn(uint256 tokensIn) external payable returns (bool) {
         require(tokensIn > 0, "Shopper: insufficient value in");
-        require(IPricer(pricer).hasDecreasingPrice(), "Shopper: not open for buying");
 
         uint256 maxBurnable = getMaxBurnableAmount();
         require(maxBurnable > 0, "Shopper: latte fully bought");
@@ -72,6 +79,9 @@ contract Shopper {
         uint256 burnBasisPoints = BASIS_POINTS_DIVISOR.sub(feeBasisPoints);
         uint256 toBurn = tokensIn.mul(burnBasisPoints).div(BASIS_POINTS_DIVISOR);
         ILatte(latte).burn(msg.sender, toBurn);
+
+        uint256 interval = ILatte(latte).snapshotTime();
+        burnSums[interval] = burnSums[interval].add(toBurn);
 
         uint256 toCashier = tokensIn.sub(toBurn);
         IERC20(latte).transferFrom(msg.sender, cashier, toCashier);

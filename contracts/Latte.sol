@@ -21,7 +21,6 @@ contract Latte is IERC20, ILatte {
     uint8 public constant decimals = 18;
 
     string public website = "https://lattefi.app";
-    uint256 public latestBlockTime;
 
     address public gov;
     address public cafe;
@@ -35,6 +34,7 @@ contract Latte is IERC20, ILatte {
 
     uint256 public override totalSupply;
     uint256 public override supplySnapshot;
+    uint256 public override snapshotTime;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
@@ -156,9 +156,9 @@ contract Latte is IERC20, ILatte {
 
     function _update() private {
         uint256 blockTime = block.timestamp;
-        if (blockTime.sub(latestBlockTime) > MIN_INTERVAL) {
+        if (blockTime.sub(snapshotTime) > MIN_INTERVAL) {
             supplySnapshot = totalSupply;
-            latestBlockTime = blockTime;
+            snapshotTime = blockTime;
         }
 
         if (pricer != address(0)) {

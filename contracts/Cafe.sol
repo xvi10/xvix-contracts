@@ -51,19 +51,24 @@ contract Cafe {
     }
 
     function getMaxMintableAmount() public view returns (uint256) {
+        if (!IPricer(pricer).hasIncreasingPrice()) {
+            return 0;
+        }
+
         uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 delta = supply.mul(MINTABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 maxSupply = supply.add(delta);
+        uint256 mintable = supply.mul(MINTABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 maxSupply = supply.add(mintable);
         uint256 currentSupply = IERC20(latte).totalSupply();
+
         if (currentSupply >= maxSupply) {
             return 0;
         }
+
         return maxSupply.sub(currentSupply);
     }
 
     function mint() external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value in");
-        require(IPricer(pricer).hasIncreasingPrice(), "Cafe: not open for selling");
 
         uint256 maxMintable = getMaxMintableAmount();
         require(maxMintable > 0, "Cafe: latte fully sold");

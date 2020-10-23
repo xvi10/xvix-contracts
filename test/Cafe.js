@@ -99,7 +99,7 @@ describe("Cafe", function() {
 
   it("mint fails unless price is increasing", async () => {
     await expect(cafe.mint({ value: "100" }))
-      .to.be.revertedWith("Cafe: not open for selling")
+      .to.be.revertedWith("Cafe: latte fully sold")
   })
 
   it("mints", async () => {
