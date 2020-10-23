@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { expandDecimals, increaseTime } = require("./shared/utilities")
+const { expandDecimals, increaseTime, gasUsed } = require("./shared/utilities")
 const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 const { expectBetween } = require("./shared/waffle")
 const { increasePrice } = require("./shared/pricer")
@@ -117,7 +117,8 @@ describe("Cafe", function() {
     // 50 tokens allowed to be minted, 0.5% of the total supply of 10000
     expect(await cafe.getMaxMintableAmount()).eq("50000000000000000000")
     expect(await latte.balanceOf(user0.address)).eq(0)
-    await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
+    const tx0 = await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
+    console.log("tx0 gasUsed", (await gasUsed(provider, tx0)).toString())
     const minted = await latte.balanceOf(user1.address)
     // 2.45, which is close to 1000 / 400 = 2.5
     expectBetween(minted, "2450000000000000000", "2451000000000000000")

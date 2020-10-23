@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
@@ -8,6 +8,7 @@ import "./libraries/token/IERC20.sol";
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 import "./interfaces/IPool.sol";
+
 
 contract Cafe {
     using SafeMath for uint256;
@@ -50,23 +51,6 @@ contract Cafe {
         feeBasisPoints = _basisPoints;
     }
 
-    function getMaxMintableAmount() public view returns (uint256) {
-        if (!IPricer(pricer).hasIncreasingPrice()) {
-            return 0;
-        }
-
-        uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 mintable = supply.mul(MINTABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 maxSupply = supply.add(mintable);
-        uint256 currentSupply = IERC20(latte).totalSupply();
-
-        if (currentSupply >= maxSupply) {
-            return 0;
-        }
-
-        return maxSupply.sub(currentSupply);
-    }
-
     function mint(address receiver) external payable returns (bool) {
         require(msg.value > 0, "Cafe: insufficient value in");
 
@@ -92,5 +76,22 @@ contract Cafe {
 
         (success,) = cashier.call{value: toCashier}("");
         require(success, "Cafe: transfer to cashier failed");
+    }
+
+    function getMaxMintableAmount() public view returns (uint256) {
+        if (!IPricer(pricer).hasIncreasingPrice()) {
+            return 0;
+        }
+
+        uint256 supply = ILatte(latte).supplySnapshot();
+        uint256 mintable = supply.mul(MINTABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 maxSupply = supply.add(mintable);
+        uint256 currentSupply = IERC20(latte).totalSupply();
+
+        if (currentSupply >= maxSupply) {
+            return 0;
+        }
+
+        return maxSupply.sub(currentSupply);
     }
 }

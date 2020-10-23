@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
@@ -12,6 +12,7 @@ import "./interfaces/ILatte.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IUniswapV2Factory.sol";
 import "./interfaces/IUniswapV2ERC20.sol";
+
 
 contract Market {
     using SafeMath for uint256;

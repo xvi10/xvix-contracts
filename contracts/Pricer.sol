@@ -1,10 +1,11 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IPricer.sol";
+
 
 contract Pricer is IPricer {
     using SafeMath for uint256;

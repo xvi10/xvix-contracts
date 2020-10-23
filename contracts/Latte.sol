@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
@@ -8,6 +8,7 @@ import "./libraries/token/IERC20.sol";
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
 import "./interfaces/IPool.sol";
+
 
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;

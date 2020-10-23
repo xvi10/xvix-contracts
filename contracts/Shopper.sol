@@ -1,12 +1,13 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity =0.6.12;
+pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPricer.sol";
+
 
 contract Shopper {
     using SafeMath for uint256;
@@ -49,22 +50,6 @@ contract Shopper {
         feeBasisPoints = _basisPoints;
     }
 
-    function getMaxBurnableAmount() public view returns (uint256) {
-        if (!IPricer(pricer).hasDecreasingPrice()) {
-            return 0;
-        }
-
-        uint256 supply = ILatte(latte).supplySnapshot();
-        uint256 burnable = supply.mul(BURNABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 burnt = burnSums[ILatte(latte).snapshotTime()];
-
-        if (burnt >= burnable) {
-            return 0;
-        }
-
-        return burnable.sub(burnt);
-    }
-
     function burn(uint256 tokensIn, address receiver) external payable returns (bool) {
         require(tokensIn > 0, "Shopper: insufficient value in");
 
@@ -91,4 +76,20 @@ contract Shopper {
     }
 
     receive() external payable {}
+
+    function getMaxBurnableAmount() public view returns (uint256) {
+        if (!IPricer(pricer).hasDecreasingPrice()) {
+            return 0;
+        }
+
+        uint256 supply = ILatte(latte).supplySnapshot();
+        uint256 burnable = supply.mul(BURNABLE_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 burnt = burnSums[ILatte(latte).snapshotTime()];
+
+        if (burnt >= burnable) {
+            return 0;
+        }
+
+        return burnable.sub(burnt);
+    }
 }
