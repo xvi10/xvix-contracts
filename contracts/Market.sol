@@ -8,6 +8,7 @@ import "./uniswap/UniswapV2Library.sol";
 import "./uniswap/TransferHelper.sol";
 
 import "./interfaces/IPool.sol";
+import "./interfaces/IPricer.sol";
 import "./interfaces/ILatte.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IUniswapV2Factory.sol";
@@ -17,21 +18,25 @@ import "./interfaces/IUniswapV2ERC20.sol";
 contract Market {
     using SafeMath for uint256;
 
+    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
+
     address public immutable latte;
     address public immutable WETH;
     address public immutable pool;
     address public immutable factory;
+    address public immutable pricer;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, "Market: expired");
         _;
     }
 
-    constructor(address _latte, address _weth, address _pool, address _factory) public {
+    constructor(address _latte, address _weth, address _pool, address _factory, address _pricer) public {
         latte = _latte;
         WETH = _weth;
         pool = _pool;
         factory = _factory;
+        pricer = _pricer;
     }
 
     function _addLiquidity(
@@ -128,6 +133,25 @@ contract Market {
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
 
         IPool(pool).mint(msg.sender, amounts[amounts.length - 1]);
+    }
+
+    function burn(uint256 iterations, uint256 baseAmount) external {
+        require(IERC20(latte).balanceOf(msg.sender) >= baseAmount, "Market: base amount exceeds balance");
+        require(IPricer(pricer).hasDecreasingPrice(), "Market: rewards are not available");
+
+        uint256 totalBurn = 0;
+        uint256 totalShares = 0;
+        uint256 remainingTokens = baseAmount;
+        uint256 burnBasisPoints = ILatte(latte).BURN_BASIS_POINTS();
+        for (uint256 i = 0; i < iterations; i++) {
+            uint256 toBurn = remainingTokens.mul(burnBasisPoints).div(BASIS_POINTS_DIVISOR);
+            totalBurn = totalBurn.add(toBurn);
+            remainingTokens = remainingTokens.sub(toBurn);
+            totalShares = totalShares.add(remainingTokens);
+        }
+
+        ILatte(latte).burn(msg.sender, totalBurn);
+        IPool(pool).mint(msg.sender, totalShares);
     }
 
     function _swap(uint[] memory amounts, address[] memory path, address _to) private {

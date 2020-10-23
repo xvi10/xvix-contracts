@@ -3,6 +3,7 @@
 pragma solidity 0.6.12;
 
 interface ILatte {
+    function BURN_BASIS_POINTS() external view returns (uint256);
     function supplySnapshot() external view returns (uint256);
     function snapshotTime() external view returns (uint256);
     function setGuardedTransfer(bool guardedTransfer) external;

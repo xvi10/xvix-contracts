@@ -13,7 +13,7 @@ import "./interfaces/IPool.sol";
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
 
-    uint256 public constant BURN_BASIS_POINTS = 500; // 5%
+    uint256 public constant override BURN_BASIS_POINTS = 500; // 5%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     uint256 public constant MIN_INTERVAL = 30 minutes;
@@ -139,7 +139,7 @@ contract Latte is IERC20, ILatte {
     }
 
     function burn(address _account, uint256 _amount) external override returns(bool) {
-        require(msg.sender == shopper, "Latte: forbidden");
+        require(msg.sender == shopper || msg.sender == market, "Latte: forbidden");
         _burn(_account, _amount);
         return true;
     }

@@ -34,7 +34,7 @@ async function loadFixtures(provider, wallet) {
   const pricer = await deployContract("Pricer", [pair.address, latte.address])
   const shopper = await deployContract("Shopper", [latte.address, pricer.address])
   const pool = await deployContract("Pool", [latte.address, pricer.address])
-  const market = await deployContract("Market", [latte.address, weth.address, pool.address, factory.address])
+  const market = await deployContract("Market", [latte.address, weth.address, pool.address, factory.address, pricer.address])
   const cafe = await deployContract("Cafe", [latte.address, pricer.address, shopper.address, pool.address])
 
   await latte.setCafe(cafe.address)
