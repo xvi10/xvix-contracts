@@ -38,8 +38,9 @@ async function loadFixtures(provider, wallet) {
 
   await latte.setCafe(cafe.address)
   await latte.setPool(pool.address)
-  await latte.setPair(pair.address)
-  await latte.setMarket(market.address)
+
+  await latte.addExemption(pair.address)
+  await latte.addExemption(market.address)
 
   return { latte, weth, router, pair, pool, market, cafe }
 }

@@ -11,16 +11,12 @@ describe("Latte", function() {
   let latte
   let cafe
   let pool
-  let pair
-  let market
 
   beforeEach(async () => {
     const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
     cafe = fixtures.cafe
     pool = fixtures.pool
-    pair = fixtures.pair
-    market = fixtures.market
   })
 
   it("inits name", async () => {
@@ -89,28 +85,6 @@ describe("Latte", function() {
     expect(await latte.pool()).eq(pool.address)
   })
 
-  it("setPair", async () => {
-    await expect(latte.connect(user0).setPair(user1.address))
-      .to.be.revertedWith("Latte: forbidden")
-    await latte.setGov(user0.address)
-
-    await expect(latte.connect(user0).setPair(user1.address))
-      .to.be.revertedWith("Latte: pair already set")
-
-    expect(await latte.pair()).eq(pair.address)
-  })
-
-  it("setMarket", async () => {
-    await expect(latte.connect(user0).setMarket(user1.address))
-      .to.be.revertedWith("Latte: forbidden")
-    await latte.setGov(user0.address)
-
-    await expect(latte.connect(user0).setMarket(user1.address))
-      .to.be.revertedWith("Latte: market already set")
-
-    expect(await latte.market()).eq(market.address)
-  })
-
   it("mint fails unless sender is cafe", async () => {
     const latteMock = await deployContract("Latte", ["10"])
     await latteMock.setCafe(user1.address)
@@ -155,48 +129,36 @@ describe("Latte", function() {
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 6 + 3, 18))
   })
 
-  it("exempts pair", async () => {
-    const latteMock = await deployContract("Latte", [expandDecimals(1000, 18)])
-    const cafeMock = await deployContract("Cafe",[latteMock.address, pool.address, "4", "10"])
-    await latteMock.setCafe(cafeMock.address)
-    await latteMock.setPair(user0.address)
-
-    await latteMock.transfer(user0.address, expandDecimals(200, 18))
-    expect(await latteMock.balanceOf(user0.address)).eq(expandDecimals(200, 18))
-    expect(await latteMock.totalSupply()).eq(expandDecimals(1000 - 6, 18))
-
-    await latteMock.connect(user0).transfer(user1.address, expandDecimals(100, 18))
-    expect(await latteMock.balanceOf(user0.address)).eq(expandDecimals(200 - 100, 18))
-    expect(await latteMock.totalSupply()).eq(expandDecimals(1000 - 6, 18))
-  })
-
-  it("exempts market", async () => {
-    const latteMock = await deployContract("Latte", [expandDecimals(1000, 18)])
-    const cafeMock = await deployContract("Cafe",[latteMock.address, pool.address, "4", "10"])
-    await latteMock.setCafe(cafeMock.address)
-    await latteMock.setMarket(user0.address)
-
-    await latteMock.transfer(user0.address, expandDecimals(200, 18))
-    expect(await latteMock.balanceOf(user0.address)).eq(expandDecimals(200, 18))
-    expect(await latteMock.totalSupply()).eq(expandDecimals(1000 - 6, 18))
-
-    await latteMock.connect(user0).transfer(user1.address, expandDecimals(100, 18))
-    expect(await latteMock.balanceOf(user0.address)).eq(expandDecimals(200 - 100, 18))
-    expect(await latteMock.totalSupply()).eq(expandDecimals(1000 - 6, 18))
-  })
-
   it("toast", async () => {
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
-    await latte.transfer(user0.address, expandDecimals(100, 18))
+    await latte.transfer(user0.address, expandDecimals(100, 18)) // burn 3
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(100, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3, 18)) // burn 3
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3, 18))
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
 
-    await latte.connect(user0).toast(expandDecimals(5, 18))
+    await latte.connect(user0).toast(expandDecimals(5, 18)) // burn 5
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(95, 18))
     expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3 - 5, 18))
 
     // token reserve of cafe should not increase
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
+  })
+
+  it("exempts", async () => {
+    await latte.transfer(user0.address, expandDecimals(300, 18)) // burn 9
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9, 18))
+
+    await latte.addExemption(user0.address)
+
+    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 0
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300 - 100, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9, 18))
+
+    await latte.removeExemption(user0.address)
+
+    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 3
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300 - 100 - 100 - 3, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9 - 3, 18))
   })
 })

@@ -24,12 +24,12 @@ contract Latte is IERC20, ILatte {
     address public gov;
     address public cafe;
     address public pool;
-    address public pair;
-    address public market;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
     uint256 public override totalSupply;
+
+    mapping (address => bool) exempted;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
@@ -61,16 +61,6 @@ contract Latte is IERC20, ILatte {
         return true;
     }
 
-    function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
-        _approve(msg.sender, _spender, allowances[msg.sender][_spender].add(_addedValue));
-        return true;
-    }
-
-    function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
-        _approve(msg.sender, _spender, allowances[msg.sender][_spender].sub(_subtractedValue, "Latte: decreased allowance below zero"));
-        return true;
-    }
-
     function setGov(address _gov) external {
         require(msg.sender == gov, "Latte: forbidden");
         gov = _gov;
@@ -93,16 +83,14 @@ contract Latte is IERC20, ILatte {
         pool = _pool;
     }
 
-    function setPair(address _pair) external {
+    function addExemption(address _account) external {
         require(msg.sender == gov, "Latte: forbidden");
-        require(pair == address(0), "Latte: pair already set");
-        pair = _pair;
+        exempted[_account] = true;
     }
 
-    function setMarket(address _market) external {
+    function removeExemption(address _account) external {
         require(msg.sender == gov, "Latte: forbidden");
-        require(market == address(0), "Latte: market already set");
-        market = _market;
+        exempted[_account] = false;
     }
 
     function mint(address _account, uint256 _amount) external override returns(bool) {
@@ -130,8 +118,7 @@ contract Latte is IERC20, ILatte {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
-        bool exempted = msg.sender == pair || msg.sender == market;
-        if (!exempted) {
+        if (!exempted[msg.sender]) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);
             ICafe(cafe).increaseTokenReserve(burnAmount);

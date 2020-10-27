@@ -1,30 +1,41 @@
-async function addLiquidityETH({ router, wallet, token, amountToken, amountETH }) {
-  await token.approve(router.address, amountToken)
-  return await router.connect(wallet).addLiquidityETH(
+async function addLiquidityETH({ router, wallet, token, tokenAmount, ethAmount }) {
+  await token.approve(router.address, tokenAmount)
+  return router.connect(wallet).addLiquidityETH(
     token.address,
-    amountToken,
-    amountToken,
-    amountETH,
+    tokenAmount,
+    tokenAmount,
+    ethAmount,
     wallet.address,
     ethers.constants.MaxUint256,
-    { value: amountETH }
+    { value: ethAmount }
   )
 }
 
-async function buyTokens({ router, wallet, weth, token, amount }) {
-  return await router.connect(wallet).swapExactETHForTokens(
+async function removeLiquidityETH({ router, wallet, token, liquidity }) {
+  return router.connect(wallet).removeLiquidityETH(
+    token.address,
+    liquidity,
+    0,
+    0,
+    wallet.address,
+    ethers.constants.MaxUint256
+  )
+}
+
+async function buyTokens({ router, wallet, weth, token, ethAmount }) {
+  return router.connect(wallet).swapExactETHForTokens(
     0,
     [weth.address, token.address],
     wallet.address,
     ethers.constants.MaxUint256,
-    { value: amount }
+    { value: ethAmount }
   )
 }
 
-async function sellTokens({ router, wallet, weth, token, amount }) {
-  await token.approve(router.address, amount)
-  return await router.connect(wallet).swapExactTokensForETH(
-    amount,
+async function sellTokens({ router, wallet, weth, token, tokenAmount }) {
+  await token.approve(router.address, tokenAmount)
+  return router.connect(wallet).swapExactTokensForETH(
+    tokenAmount,
     0,
     [token.address, weth.address],
     wallet.address,
@@ -34,6 +45,7 @@ async function sellTokens({ router, wallet, weth, token, amount }) {
 
 module.exports = {
   addLiquidityETH,
+  removeLiquidityETH,
   buyTokens,
   sellTokens
 }
