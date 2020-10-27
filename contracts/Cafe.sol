@@ -32,6 +32,8 @@ contract Cafe is ReentrancyGuard {
         require(msg.value > 0, "Cafe: insufficient value in");
 
         uint256 toMint = getMintAmount(msg.value);
+        require(toMint > 0, "Cafe: mint amount is zero");
+
         ILatte(latte).mint(receiver, toMint);
         ethReserve = ethReserve.add(msg.value);
         tokenReserve = tokenReserve.sub(toMint);
