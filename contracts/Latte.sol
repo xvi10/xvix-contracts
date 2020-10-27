@@ -13,7 +13,7 @@ import "./interfaces/IPool.sol";
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
 
-    uint256 public constant override BURN_BASIS_POINTS = 500; // 5%
+    uint256 public constant BURN_BASIS_POINTS = 300; // 3%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     uint256 public constant MIN_INTERVAL = 30 minutes;
@@ -21,29 +21,21 @@ contract Latte is IERC20, ILatte {
     string public constant symbol = "LATTE";
     uint8 public constant decimals = 18;
 
-    string public website = "https://lattefi.app";
+    string public website = "https://lattefi.com";
 
     address public gov;
     address public cafe;
-    address public shopper;
-    address public pricer;
     address public pool;
     address public pair;
     address public market;
 
-    bool public guardedTransfer;
-
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
-
     uint256 public override totalSupply;
-    uint256 public override supplySnapshot;
-    uint256 public override snapshotTime;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
         _mint(msg.sender, initialSupply);
-        _update();
     }
 
     function balanceOf(address _account) public view override returns (uint256) {
@@ -97,18 +89,6 @@ contract Latte is IERC20, ILatte {
         cafe = _cafe;
     }
 
-    function setShopper(address _shopper) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        require(shopper == address(0), "Latte: shopper already set");
-        shopper = _shopper;
-    }
-
-    function setPricer(address _pricer) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        require(pricer == address(0), "Latte: pricer already set");
-        pricer = _pricer;
-    }
-
     function setPool(address _pool) external {
         require(msg.sender == gov, "Latte: forbidden");
         require(pool == address(0), "Latte: pool already set");
@@ -127,11 +107,6 @@ contract Latte is IERC20, ILatte {
         market = _market;
     }
 
-    function setGuardedTransfer(bool _guardedTransfer) external override {
-        require(msg.sender == market, "Latte: forbidden");
-        guardedTransfer = _guardedTransfer;
-    }
-
     function mint(address _account, uint256 _amount) external override returns(bool) {
         require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
@@ -139,13 +114,14 @@ contract Latte is IERC20, ILatte {
     }
 
     function burn(address _account, uint256 _amount) external override returns(bool) {
-        require(msg.sender == shopper || msg.sender == market, "Latte: forbidden");
+        require(msg.sender == pool, "Latte: forbidden");
         _burn(_account, _amount);
         return true;
     }
 
-    function update() external {
-        _update();
+    function blaze(uint256 _amount) external returns(bool) {
+        _burn(msg.sender, _amount);
+        return true;
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
@@ -156,28 +132,10 @@ contract Latte is IERC20, ILatte {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
-        if (pool != address(0) && !guardedTransfer) {
-            IPool(pool).revokeShares(_sender);
-        }
-
-        bool exempted = guardedTransfer || msg.sender == shopper || msg.sender == pair;
-        if (IPricer(pricer).hasDecreasingPrice() && !exempted) {
+        bool exempted = msg.sender == pair || msg.sender == market;
+        if (!exempted) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);
-        }
-
-        _update();
-    }
-
-    function _update() private {
-        uint256 blockTime = block.timestamp;
-        if (blockTime.sub(snapshotTime) > MIN_INTERVAL) {
-            supplySnapshot = totalSupply;
-            snapshotTime = blockTime;
-        }
-
-        if (pricer != address(0)) {
-            IPricer(pricer).update();
         }
     }
 
