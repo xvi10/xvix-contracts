@@ -10,11 +10,13 @@ describe("Pool", function() {
   const [wallet, user0] = provider.getWallets()
   let latte
   let pool
+  let cafe
 
   beforeEach(async () => {
     const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
     pool = fixtures.pool
+    cafe = fixtures.cafe
   })
 
   it("fund", async () => {
@@ -35,15 +37,25 @@ describe("Pool", function() {
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18)) // 10 / 1000 * 300
   })
 
+  it("getMintAmount", async () => {
+    expect(await pool.getMintAmount("1")).eq(ethers.constants.MaxUint256)
+    await pool.fund({ value: expandDecimals(200, 18) })
+    expect(await pool.getMintAmount("1")).eq("5")
+  })
+
   it("refund", async () => {
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
     const burnAmount = expandDecimals(10, 18)
     expect(await pool.capital()).eq("0")
     await expect(pool.refund(user0.address, burnAmount))
-      .to.be.revertedWith("Pool: capital is zero")
+      .to.be.revertedWith("Pool: refund amount is zero")
 
     const funding = expandDecimals(300, 18)
     await pool.fund({ value: funding })
     expect(await pool.capital()).eq(funding)
+    await expect(pool.refund(user0.address, "1"))
+      .to.be.revertedWith("Pool: refund amount is zero")
+
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18))
 
     const userBalance0 = await provider.getBalance(user0.address)
@@ -58,5 +70,8 @@ describe("Pool", function() {
 
     expect(await pool.capital()).eq(expandDecimals(300 - 3, 18))
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18))
+
+    // token reserve of cafe should not increase
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
   })
 })

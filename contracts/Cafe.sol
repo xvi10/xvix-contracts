@@ -43,21 +43,17 @@ contract Cafe is ReentrancyGuard {
 
     function increaseTokenReserve(uint256 _amount) external nonReentrant returns (bool) {
         require(msg.sender == latte, "Cafe: forbidden");
-
-        uint256 totalSupply = IERC20(latte).totalSupply();
-        uint256 capital = IPool(pool).capital();
-        uint256 newTokenReserve = tokenReserve.add(_amount);
-        if (ethReserve.mul(totalSupply) < capital.mul(newTokenReserve)) {
-            return false;
-        }
-
-        tokenReserve = newTokenReserve;
+        tokenReserve = tokenReserve.add(_amount);
         return true;
     }
 
-    function getMintAmount(uint256 _amountIn) public view returns (uint256) {
+    function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
         uint256 k = ethReserve.mul(tokenReserve);
-        uint256 a = k.div(ethReserve.add(_amountIn));
-        return tokenReserve.sub(a);
+        uint256 a = k.div(ethReserve.add(_ethAmount));
+        uint256 mintable = tokenReserve.sub(a);
+        // the maximum tokens that can be minted is capped by the price floor of the pool
+        // this ensures that minting tokens will never reduce the price floor
+        uint256 max = IPool(pool).getMintAmount(_ethAmount);
+        return mintable < max ? mintable : max;
     }
 }

@@ -144,13 +144,15 @@ describe("Latte", function() {
   })
 
   it("transfer", async () => {
-    await latte.transfer(user0.address, expandDecimals(200, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
+    await latte.transfer(user0.address, expandDecimals(200, 18)) // burn 6
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(200, 18))
     expect(await latte.totalSupply()).eq(expandDecimals(1000 - 6, 18))
 
-    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18))
+    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 3
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(200 - 100 - 3, 18))
     expect(await latte.totalSupply()).eq(expandDecimals(1000 - 6 - 3, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 6 + 3, 18))
   })
 
   it("exempts pair", async () => {
@@ -184,12 +186,17 @@ describe("Latte", function() {
   })
 
   it("toast", async () => {
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
     await latte.transfer(user0.address, expandDecimals(100, 18))
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(100, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3, 18)) //
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3, 18)) // burn 3
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
 
     await latte.connect(user0).toast(expandDecimals(5, 18))
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(95, 18))
     expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3 - 5, 18))
+
+    // token reserve of cafe should not increase
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
   })
 })

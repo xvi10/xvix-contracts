@@ -43,6 +43,18 @@ describe("Cafe", function() {
     expect(mintAmount2).eq(expandDecimals(500, 18))
   })
 
+  it("getMintAmount is capped", async() => {
+    // k: 400 * 1000
+    // if amountIn is 1, amountOut should be ~2.4937, close to 2.5 (1000 / 400)
+    const mintAmount0 = await cafe.getMintAmount(expandDecimals(1, 18))
+    expect(mintAmount0).eq("2493765586034912719")
+
+    // the mint amount is capped to the mint amount of the pool
+    await pool.fund({ value: expandDecimals(500, 18) })
+    const mintAmount1 = await cafe.getMintAmount(expandDecimals(1, 18))
+    expect(mintAmount1).eq("2000000000000000000")
+  })
+
   it("increaseTokenReserve fails unless sender is latte", async () => {
     await expect(cafe.increaseTokenReserve("1"))
       .to.be.revertedWith("Cafe: forbidden")
@@ -74,5 +86,28 @@ describe("Cafe", function() {
     expect(bigNumberify(remaining).add(minted)).eq(expandDecimals(1000, 18))
     const k = (await cafe.ethReserve()).mul(await cafe.tokenReserve())
     expect(k).eq("399999999999999999999681000000000000000000")
+  })
+
+  it("caps mint", async () => {
+    expect(await latte.balanceOf(user0.address)).eq("0")
+    expect(await latte.balanceOf(user1.address)).eq("0")
+    expect(await provider.getBalance(pool.address)).eq("0")
+    await pool.fund({ value: expandDecimals(500, 18) })
+
+    await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
+    const minted = "2000000000000000000"
+    const remaining = "998000000000000000000"
+    expect(await latte.balanceOf(user0.address)).eq("0")
+    expect(await latte.balanceOf(user1.address)).eq(minted)
+    expect(await provider.getBalance(pool.address)).eq(expandDecimals(501, 18))
+    expect(await pool.capital()).eq(expandDecimals(501, 18))
+
+    expect(await latte.totalSupply()).eq(expandDecimals(1000, 18).add(minted))
+
+    expect(await cafe.ethReserve()).eq(expandDecimals(401, 18))
+    expect(await cafe.tokenReserve()).eq(remaining)
+    expect(bigNumberify(remaining).add(minted)).eq(expandDecimals(1000, 18))
+    const k = (await cafe.ethReserve()).mul(await cafe.tokenReserve())
+    expect(k).eq("400198000000000000000000000000000000000000")
   })
 })

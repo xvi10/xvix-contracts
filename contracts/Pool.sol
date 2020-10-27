@@ -14,7 +14,7 @@ contract Pool is IPool, ReentrancyGuard {
     using SafeMath for uint256;
 
     address public immutable latte;
-    uint256 public override capital;
+    uint256 public capital;
 
     event Refund(address indexed to, uint256 refundAmount, uint256 burnAmount);
 
@@ -27,8 +27,8 @@ contract Pool is IPool, ReentrancyGuard {
     }
 
     function refund(address _receiver, uint256 _burnAmount) external nonReentrant {
-        require(capital > 0, "Pool: capital is zero");
         uint256 refundAmount = getRefundAmount(_burnAmount);
+        require(refundAmount > 0, "Pool: refund amount is zero");
         capital = capital.sub(refundAmount);
 
         ILatte(latte).burn(msg.sender, _burnAmount);
@@ -39,8 +39,16 @@ contract Pool is IPool, ReentrancyGuard {
         emit Refund(_receiver, refundAmount, _burnAmount);
     }
 
-    function getRefundAmount(uint256 _amount) public view returns (uint256) {
+    function getMintAmount(uint256 _ethAmount) external override view returns (uint256) {
+        if (capital == 0) {
+            return uint256(-1);
+        }
         uint256 totalSupply = IERC20(latte).totalSupply();
-        return capital.mul(_amount).div(totalSupply);
+        return _ethAmount.mul(totalSupply).div(capital);
+    }
+
+    function getRefundAmount(uint256 _tokenAmount) public view returns (uint256) {
+        uint256 totalSupply = IERC20(latte).totalSupply();
+        return capital.mul(_tokenAmount).div(totalSupply);
     }
 }
