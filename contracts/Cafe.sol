@@ -42,6 +42,8 @@ contract Cafe is ReentrancyGuard {
     }
 
     function increaseTokenReserve(uint256 _amount) external nonReentrant returns (bool) {
+        require(msg.sender == latte, "Cafe: forbidden");
+
         uint256 totalSupply = IERC20(latte).totalSupply();
         uint256 capital = IPool(pool).capital();
         uint256 newTokenReserve = tokenReserve.add(_amount);

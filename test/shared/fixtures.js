@@ -21,7 +21,7 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
-  const initialSupply = expandDecimals(10000, 18)
+  const initialSupply = expandDecimals(1000, 18)
   const latte = await deployContract("Latte", [initialSupply])
   const weth = await deployContract("WETH", [])
 
@@ -41,11 +41,10 @@ async function loadFixtures(provider, wallet) {
   await latte.setPair(pair.address)
   await latte.setMarket(market.address)
 
-  await pool.setMarket(market.address)
-
-  return { latte, weth, router, pair, pricer, pool, market, cafe }
+  return { latte, weth, router, pair, pool, market, cafe }
 }
 
 module.exports = {
+  deployContract,
   loadFixtures
 }

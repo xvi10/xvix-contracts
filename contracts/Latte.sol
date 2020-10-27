@@ -15,7 +15,6 @@ contract Latte is IERC20, ILatte {
     uint256 public constant BURN_BASIS_POINTS = 300; // 3%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
-    uint256 public constant MIN_INTERVAL = 30 minutes;
     string public constant name = "Latte";
     string public constant symbol = "LATTE";
     uint8 public constant decimals = 18;
@@ -72,14 +71,14 @@ contract Latte is IERC20, ILatte {
         return true;
     }
 
-    function setWebsite(string memory _website) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        website = _website;
-    }
-
     function setGov(address _gov) external {
         require(msg.sender == gov, "Latte: forbidden");
         gov = _gov;
+    }
+
+    function setWebsite(string memory _website) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        website = _website;
     }
 
     function setCafe(address _cafe) external {

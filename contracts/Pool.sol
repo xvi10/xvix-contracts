@@ -22,7 +22,7 @@ contract Pool is IPool, ReentrancyGuard {
         latte = _latte;
     }
 
-    function fund() external override payable {
+    function fund() external override payable nonReentrant {
         capital = capital.add(msg.value);
     }
 

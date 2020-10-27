@@ -1,6 +1,6 @@
 usePlugin("@nomiclabs/buidler-waffle");
-usePlugin("buidler-gas-reporter");
 usePlugin("@nomiclabs/buidler-solhint");
+// usePlugin("buidler-gas-reporter");
 
 // This is a sample Buidler task. To learn how to create your own go to
 // https://buidler.dev/guides/create-task.html
