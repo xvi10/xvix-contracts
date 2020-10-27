@@ -7,7 +7,6 @@ import "./libraries/token/IERC20.sol";
 import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
-import "./interfaces/IPricer.sol";
 import "./interfaces/ILatte.sol";
 
 
@@ -15,7 +14,7 @@ contract Pool is IPool, ReentrancyGuard {
     using SafeMath for uint256;
 
     address public immutable latte;
-    uint256 public capital;
+    uint256 public override capital;
 
     event Refund(address indexed to, uint256 refundAmount, uint256 burnAmount);
 

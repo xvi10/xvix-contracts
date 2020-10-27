@@ -6,8 +6,7 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
-import "./interfaces/IPricer.sol";
-import "./interfaces/IPool.sol";
+import "./interfaces/ICafe.sol";
 
 
 contract Latte is IERC20, ILatte {
@@ -119,7 +118,7 @@ contract Latte is IERC20, ILatte {
         return true;
     }
 
-    function blaze(uint256 _amount) external returns(bool) {
+    function toast(uint256 _amount) external returns(bool) {
         _burn(msg.sender, _amount);
         return true;
     }
@@ -136,6 +135,7 @@ contract Latte is IERC20, ILatte {
         if (!exempted) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);
+            ICafe(cafe).increaseTokenReserve(burnAmount);
         }
     }
 

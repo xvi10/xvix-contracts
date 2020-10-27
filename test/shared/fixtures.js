@@ -21,7 +21,8 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
-  const latte = await deployContract("Latte", [expandDecimals(10000, 18)])
+  const initialSupply = expandDecimals(10000, 18)
+  const latte = await deployContract("Latte", [initialSupply])
   const weth = await deployContract("WETH", [])
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
@@ -31,22 +32,18 @@ async function loadFixtures(provider, wallet) {
   const pairAddress = await factory.getPair(latte.address, weth.address)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
 
-  const pricer = await deployContract("Pricer", [pair.address, latte.address])
-  const shopper = await deployContract("Shopper", [latte.address, pricer.address])
-  const pool = await deployContract("Pool", [latte.address, pricer.address])
-  const market = await deployContract("Market", [latte.address, weth.address, pool.address, factory.address, pricer.address])
-  const cafe = await deployContract("Cafe", [latte.address, pricer.address, shopper.address, pool.address])
+  const pool = await deployContract("Pool", [latte.address])
+  const market = await deployContract("Market", [weth.address, factory.address])
+  const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18), initialSupply])
 
   await latte.setCafe(cafe.address)
-  await latte.setShopper(shopper.address)
-  await latte.setPricer(pricer.address)
   await latte.setPool(pool.address)
   await latte.setPair(pair.address)
   await latte.setMarket(market.address)
 
   await pool.setMarket(market.address)
 
-  return { latte, weth, router, pair, pricer, shopper, pool, market, cafe }
+  return { latte, weth, router, pair, pricer, pool, market, cafe }
 }
 
 module.exports = {

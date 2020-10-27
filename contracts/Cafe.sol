@@ -28,7 +28,7 @@ contract Cafe is ReentrancyGuard {
         tokenReserve = _tokenReserve;
     }
 
-    function mint(address receiver) external payable nonReentrant returns (bool) {
+    function mint(address receiver) external payable nonReentrant {
         require(msg.value > 0, "Cafe: insufficient value in");
 
         uint256 toMint = getMintAmount(msg.value);
@@ -39,6 +39,18 @@ contract Cafe is ReentrancyGuard {
         IPool(pool).fund{value: msg.value}();
 
         emit Mint(receiver, toMint);
+    }
+
+    function increaseTokenReserve(uint256 _amount) external nonReentrant returns (bool) {
+        uint256 totalSupply = IERC20(latte).totalSupply();
+        uint256 capital = IPool(pool).capital();
+        uint256 newTokenReserve = tokenReserve.add(_amount);
+        if (ethReserve.mul(totalSupply) < capital.mul(newTokenReserve)) {
+            return false;
+        }
+
+        tokenReserve = newTokenReserve;
+        return true;
     }
 
     function getMintAmount(uint256 _amountIn) public view returns (uint256) {

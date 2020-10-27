@@ -3,24 +3,17 @@
 pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
-import "./libraries/token/IERC20.sol";
 import "./uniswap/UniswapV2Library.sol";
 import "./uniswap/TransferHelper.sol";
 
-import "./interfaces/IPool.sol";
-import "./interfaces/IPricer.sol";
-import "./interfaces/ILatte.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IUniswapV2Factory.sol";
-import "./interfaces/IUniswapV2ERC20.sol";
 
 
 contract Market {
     using SafeMath for uint256;
 
-    address public immutable latte;
     address public immutable WETH;
-    address public immutable pool;
     address public immutable factory;
 
     modifier ensure(uint deadline) {
@@ -28,10 +21,8 @@ contract Market {
         _;
     }
 
-    constructor(address _latte, address _weth, address _pool, address _factory) public {
-        latte = _latte;
+    constructor(address _weth, address _factory) public {
         WETH = _weth;
-        pool = _pool;
         factory = _factory;
     }
 
