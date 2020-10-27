@@ -27,6 +27,7 @@ contract Pool is IPool, ReentrancyGuard {
     }
 
     function refund(address _receiver, uint256 _burnAmount) external nonReentrant {
+        require(capital > 0, "Pool: capital is zero");
         uint256 refundAmount = getRefundAmount(_burnAmount);
         capital = capital.sub(refundAmount);
 
