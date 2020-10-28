@@ -49,10 +49,10 @@ describe("Cafe", function() {
     const mintAmount0 = await cafe.getMintAmount(expandDecimals(1, 18))
     expect(mintAmount0).eq("2493765586034912719")
 
-    // the mint amount is capped to the mint amount of the pool
+    // the mint amount is capped to the mint amount of the pool - 5%
     await pool.fund({ value: expandDecimals(500, 18) })
     const mintAmount1 = await cafe.getMintAmount(expandDecimals(1, 18))
-    expect(mintAmount1).eq("2000000000000000000")
+    expect(mintAmount1).eq("1900000000000000000")
   })
 
   it("increaseTokenReserve fails unless sender is latte", async () => {
@@ -95,8 +95,8 @@ describe("Cafe", function() {
     await pool.fund({ value: expandDecimals(500, 18) })
 
     await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
-    const minted = "2000000000000000000"
-    const remaining = "998000000000000000000"
+    const minted = "1900000000000000000"
+    const remaining = "998100000000000000000"
     expect(await latte.balanceOf(user0.address)).eq("0")
     expect(await latte.balanceOf(user1.address)).eq(minted)
     expect(await provider.getBalance(pool.address)).eq(expandDecimals(501, 18))
@@ -108,6 +108,6 @@ describe("Cafe", function() {
     expect(await cafe.tokenReserve()).eq(remaining)
     expect(bigNumberify(remaining).add(minted)).eq(expandDecimals(1000, 18))
     const k = (await cafe.ethReserve()).mul(await cafe.tokenReserve())
-    expect(k).eq("400198000000000000000000000000000000000000")
+    expect(k).eq("400238100000000000000000000000000000000000")
   })
 })

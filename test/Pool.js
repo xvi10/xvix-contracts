@@ -38,7 +38,7 @@ describe("Pool", function() {
   })
 
   it("getMintAmount", async () => {
-    expect(await pool.getMintAmount("1")).eq(ethers.constants.MaxUint256)
+    expect(await pool.getMintAmount("1")).eq("0")
     await pool.fund({ value: expandDecimals(200, 18) })
     expect(await pool.getMintAmount("1")).eq("5")
   })

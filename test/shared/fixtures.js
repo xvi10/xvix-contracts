@@ -21,6 +21,9 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
+  const lp = "0xe19a173f0d35dcfc706dd3adb2260f5c7431f720"
+  const fund = "0xadce46a8724eb9828391648302c58c483e0d777a"
+
   const initialSupply = expandDecimals(1000, 18)
   const latte = await deployContract("Latte", [initialSupply])
   const weth = await deployContract("WETH", [])
@@ -35,14 +38,16 @@ async function loadFixtures(provider, wallet) {
   const pool = await deployContract("Pool", [latte.address])
   const market = await deployContract("Market", [weth.address, factory.address])
   const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18), initialSupply])
+  const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 1, 5, 10])
 
   await latte.setCafe(cafe.address)
   await latte.setPool(pool.address)
+  await latte.setDistributor(distributor.address)
 
   await latte.addExemption(pair.address)
   await latte.addExemption(market.address)
 
-  return { latte, weth, router, pair, pool, market, cafe }
+  return { latte, weth, router, pair, pool, market, cafe, distributor, lp, fund }
 }
 
 module.exports = {

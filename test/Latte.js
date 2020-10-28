@@ -11,12 +11,14 @@ describe("Latte", function() {
   let latte
   let cafe
   let pool
+  let distributor
 
   beforeEach(async () => {
     const fixtures = await loadFixtures(provider, wallet)
     latte = fixtures.latte
     cafe = fixtures.cafe
     pool = fixtures.pool
+    distributor = fixtures.distributor
   })
 
   it("inits name", async () => {
@@ -39,26 +41,22 @@ describe("Latte", function() {
     expect(await latte.gov()).eq(wallet.address)
   })
 
-  it("setGov fails if sender is not gov", async () => {
+  it("setGov", async () => {
     await expect(latte.connect(user0).setGov(user1.address))
       .to.be.revertedWith("Latte: forbidden")
-  })
-
-  it("setGov", async () => {
     await latte.setGov(user0.address)
+
     expect(await latte.gov()).eq(user0.address)
 
     await latte.connect(user0).setGov(user1.address)
     expect(await latte.gov()).eq(user1.address)
   })
 
-  it("setWebsite fails if sender is not gov", async () => {
+  it("setWebsite", async () => {
     await expect(latte.connect(user0).setWebsite("lattefi"))
       .to.be.revertedWith("Latte: forbidden")
-  })
-
-  it("setWebsite", async () => {
     await latte.setGov(user0.address)
+
     await latte.connect(user0).setWebsite("lattefi")
     expect(await latte.website()).equal("lattefi")
   })
@@ -85,7 +83,55 @@ describe("Latte", function() {
     expect(await latte.pool()).eq(pool.address)
   })
 
-  it("mint fails unless sender is cafe", async () => {
+  it("setDistributor", async () => {
+    await expect(latte.connect(user0).setDistributor(user1.address))
+      .to.be.revertedWith("Latte: forbidden")
+    await latte.setGov(user0.address)
+
+    await expect(latte.connect(user0).setDistributor(user1.address))
+      .to.be.revertedWith("Latte: distributor already set")
+
+    expect(await latte.distributor()).eq(distributor.address)
+  })
+
+  it("addExemption", async () => {
+    await expect(latte.connect(user0).addExemption(user1.address))
+      .to.be.revertedWith("Latte: forbidden")
+    await latte.setGov(user0.address)
+
+    expect(await latte.exemptions(user1.address)).eq(false)
+    await latte.connect(user0).addExemption(user1.address)
+    expect(await latte.exemptions(user1.address)).eq(true)
+  })
+
+  it("removeExemption", async () => {
+    await expect(latte.connect(user0).removeExemption(user1.address))
+      .to.be.revertedWith("Latte: forbidden")
+    await latte.setGov(user0.address)
+
+    expect(await latte.exemptions(user1.address)).eq(false)
+    await latte.connect(user0).addExemption(user1.address)
+    expect(await latte.exemptions(user1.address)).eq(true)
+
+    await latte.connect(user0).removeExemption(user1.address)
+    expect(await latte.exemptions(user1.address)).eq(false)
+  })
+
+  it("mint can be called by distributor", async () => {
+    const latteMock = await deployContract("Latte", ["10"])
+    await latteMock.setDistributor(user1.address)
+    expect(await latteMock.balanceOf(user1.address)).eq("0")
+
+    await expect(latteMock.connect(user0).mint(user1.address, "1"))
+      .to.be.revertedWith("Latte: forbidden")
+    expect(await latteMock.balanceOf(user1.address)).eq("0")
+
+    await latteMock.connect(user1).mint(user1.address, "7")
+    expect(await latteMock.balanceOf(user1.address)).eq("7")
+    expect(await latteMock.totalSupply()).eq("17")
+  })
+
+  it("mint can be called by cafe", async () => {
     const latteMock = await deployContract("Latte", ["10"])
     await latteMock.setCafe(user1.address)
     expect(await latteMock.balanceOf(user1.address)).eq("0")

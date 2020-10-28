@@ -14,7 +14,7 @@ contract Pool is IPool, ReentrancyGuard {
     using SafeMath for uint256;
 
     address public immutable latte;
-    uint256 public capital;
+    uint256 public override capital;
 
     event Refund(address indexed to, uint256 refundAmount, uint256 burnAmount);
 
@@ -41,7 +41,7 @@ contract Pool is IPool, ReentrancyGuard {
 
     function getMintAmount(uint256 _ethAmount) external override view returns (uint256) {
         if (capital == 0) {
-            return uint256(-1);
+            return 0;
         }
         uint256 totalSupply = IERC20(latte).totalSupply();
         return _ethAmount.mul(totalSupply).div(capital);

@@ -24,12 +24,13 @@ contract Latte is IERC20, ILatte {
     address public gov;
     address public cafe;
     address public pool;
+    address public distributor;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
     uint256 public override totalSupply;
 
-    mapping (address => bool) exempted;
+    mapping (address => bool) public exemptions;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
@@ -83,18 +84,24 @@ contract Latte is IERC20, ILatte {
         pool = _pool;
     }
 
+    function setDistributor(address _distributor) external {
+        require(msg.sender == gov, "Latte: forbidden");
+        require(distributor == address(0), "Latte: distributor already set");
+        distributor = _distributor;
+    }
+
     function addExemption(address _account) external {
         require(msg.sender == gov, "Latte: forbidden");
-        exempted[_account] = true;
+        exemptions[_account] = true;
     }
 
     function removeExemption(address _account) external {
         require(msg.sender == gov, "Latte: forbidden");
-        exempted[_account] = false;
+        exemptions[_account] = false;
     }
 
     function mint(address _account, uint256 _amount) external override returns(bool) {
-        require(msg.sender == cafe, "Latte: forbidden");
+        require(msg.sender == cafe || msg.sender == distributor, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
     }
@@ -118,7 +125,7 @@ contract Latte is IERC20, ILatte {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
-        if (!exempted[msg.sender]) {
+        if (!exemptions[msg.sender]) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);
             ICafe(cafe).increaseTokenReserve(burnAmount);

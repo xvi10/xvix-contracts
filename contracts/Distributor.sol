@@ -10,10 +10,10 @@ import "./interfaces/ILatte.sol";
 import "./interfaces/IPool.sol";
 
 
-contract Distribution is ReentrancyGuard {
+contract Distributor is ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant LP_BASIS_POINTS = 1000; // 10%
+    uint256 public constant LP_BASIS_POINTS = 2000; // 20%
     uint256 public constant FUND_BASIS_POINTS = 2000; // 20%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
