@@ -8,6 +8,7 @@ import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPool.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 contract Distributor is ReentrancyGuard {
@@ -23,8 +24,8 @@ contract Distributor is ReentrancyGuard {
     address public immutable fund; // marketing / dev fund
     address public immutable gov;
 
-    uint256 public ethDivisor;
-    uint256 public tokenMultiplier;
+    uint256 public divisor;
+    uint256 public multiplier;
 
     uint256 public ethReceived;
     uint256 public ethCap;
@@ -33,28 +34,28 @@ contract Distributor is ReentrancyGuard {
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _ethDivisor, uint256 _tokenMultiplier, uint256 _ethCap) public {
+    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _multiplier, uint256 _divisor, uint256 _ethCap) public {
         latte = _latte;
         pool = _pool;
         lp = _lp;
         fund = _fund;
-        ethDivisor = _ethDivisor;
-        tokenMultiplier = _tokenMultiplier;
+        multiplier = _multiplier;
+        divisor = _divisor;
         ethCap = _ethCap;
         gov = msg.sender;
     }
 
-    function end() external {
-        require(msg.sender == gov, "Distribution: forbidden");
+    function stop() external {
+        require(msg.sender == gov, "Distributor: forbidden");
         active = false;
     }
 
     function mint(address receiver) external payable nonReentrant {
-        require(active, "Distribution: not active");
-        require(msg.value > 0, "Distribution: insufficient value in");
+        require(active, "Distributor: not active");
+        require(msg.value > 0, "Distributor: insufficient value");
 
         uint256 receiverTokens = getMintAmount(msg.value);
-        require(receiverTokens > 0, "Distribution: mint amount is zero");
+        require(receiverTokens > 0, "Distributor: mint amount is zero");
         ILatte(latte).mint(receiver, receiverTokens);
 
         uint256 lpTokens = receiverTokens.mul(LP_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
@@ -63,22 +64,22 @@ contract Distributor is ReentrancyGuard {
         uint256 lpETH = msg.value.mul(LP_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
 
         (bool success,) = lp.call{value: lpETH}("");
-        require(success, "Distribution: transfer to lp failed");
+        require(success, "Distributor: transfer to lp failed");
 
         uint256 fundETH = msg.value.mul(FUND_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         (success,) = fund.call{value: fundETH}("");
-        require(success, "Distribution: transfer to fund failed");
+        require(success, "Distributor: transfer to fund failed");
 
         uint256 poolETH = msg.value.sub(lpETH).sub(fundETH);
         IPool(pool).fund{value: poolETH}();
 
         ethReceived = ethReceived.add(msg.value);
-        require(ethReceived > ethCap, "Distribution: cap reached");
+        require(ethReceived <= ethCap, "Distributor: cap reached");
 
         emit Mint(receiver, msg.value);
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
-        return _ethAmount.mul(tokenMultiplier).div(ethDivisor);
+        return _ethAmount.mul(multiplier).div(divisor);
     }
 }

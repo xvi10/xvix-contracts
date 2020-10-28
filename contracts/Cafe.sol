@@ -32,7 +32,7 @@ contract Cafe is ReentrancyGuard {
     }
 
     function mint(address receiver) external payable nonReentrant {
-        require(msg.value > 0, "Cafe: insufficient value in");
+        require(msg.value > 0, "Cafe: insufficient value");
 
         uint256 toMint = getMintAmount(msg.value);
         require(toMint > 0, "Cafe: mint amount is zero");

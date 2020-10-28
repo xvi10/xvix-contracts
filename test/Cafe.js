@@ -62,7 +62,7 @@ describe("Cafe", function() {
 
   it("mint fails if value is zero", async () => {
     await expect(cafe.mint(user0.address, { value: "0" }))
-      .to.be.revertedWith("Cafe: insufficient value in")
+      .to.be.revertedWith("Cafe: insufficient value")
   })
 
   it("mint", async () => {
