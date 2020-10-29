@@ -28,26 +28,34 @@ contract Distributor is ReentrancyGuard {
     uint256 public multiplier;
 
     uint256 public ethReceived;
-    uint256 public ethCap;
+    uint256 public ethMaxCap;
+    uint256 public ethSoftCap;
 
     bool public active = true;
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _multiplier, uint256 _divisor, uint256 _ethCap) public {
+    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _multiplier, uint256 _divisor, uint256 _ethMaxCap, uint256 _ethSoftCap) public {
         latte = _latte;
         pool = _pool;
         lp = _lp;
         fund = _fund;
         multiplier = _multiplier;
         divisor = _divisor;
-        ethCap = _ethCap;
+        ethMaxCap = _ethMaxCap;
+        ethSoftCap = _ethSoftCap;
         gov = msg.sender;
     }
 
     function stop() external {
         require(msg.sender == gov, "Distributor: forbidden");
         active = false;
+    }
+
+    function setSoftCap(uint256 _ethSoftCap) external {
+        require(msg.sender == gov, "Distributor: forbidden");
+        require(_ethSoftCap <= ethMaxCap, "Distributor: cannot exceed max cap");
+        ethSoftCap = _ethSoftCap;
     }
 
     function mint(address receiver) external payable nonReentrant {
@@ -74,7 +82,7 @@ contract Distributor is ReentrancyGuard {
         IPool(pool).fund{value: poolETH}();
 
         ethReceived = ethReceived.add(msg.value);
-        require(ethReceived <= ethCap, "Distributor: cap reached");
+        require(ethReceived <= ethSoftCap, "Distributor: cap reached");
 
         emit Mint(receiver, msg.value);
     }

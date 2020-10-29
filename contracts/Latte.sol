@@ -128,7 +128,6 @@ contract Latte is IERC20, ILatte {
         if (!exemptions[msg.sender]) {
             uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
             _burn(_sender, burnAmount);
-            ICafe(cafe).increaseTokenReserve(burnAmount);
         }
     }
 
@@ -145,6 +144,8 @@ contract Latte is IERC20, ILatte {
 
         balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
         totalSupply = totalSupply.sub(_amount);
+
+        ICafe(cafe).increaseTokenReserve(_amount);
         emit Transfer(_account, address(0), _amount);
     }
 

@@ -71,7 +71,6 @@ describe("Pool", function() {
     expect(await pool.capital()).eq(expandDecimals(300 - 3, 18))
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18))
 
-    // token reserve of cafe should not increase
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1010, 18))
   })
 })

@@ -23,6 +23,29 @@ describe("Distributor", function() {
     fund = fixtures.fund
   })
 
+  if("inits", async () => {
+    expect(await distributor.latte()).eq(latte.address)
+    expect(await distributor.pool()).eq(pool.address)
+    expect(await distributor.lp()).eq(lp.address)
+    expect(await distributor.fund()).eq(fund.address)
+    expect(await distributor.multiplier()).eq(5)
+    expect(await distributor.divisor()).eq(2)
+    expect(await distributor.ethMaxCap()).eq(expandDecimals(20, 18))
+    expect(await distributor.ethSoftCap()).eq(expandDecimals(15, 18))
+    expect(await distributor.gov()).eq(wallet.address)
+  })
+
+  it("setSoftCap", async () => {
+    await expect(distributor.connect(user0).setSoftCap(100))
+      .to.be.revertedWith("Distributor: forbidden")
+    await expect(distributor.setSoftCap(expandDecimals(21, 18)))
+      .to.be.revertedWith("Distributor: cannot exceed max cap")
+
+    expect(await distributor.ethSoftCap()).eq(expandDecimals(15, 18))
+    await distributor.setSoftCap(expandDecimals(20, 18))
+    expect(await distributor.ethSoftCap()).eq(expandDecimals(20, 18))
+  })
+
   it("mint fails unless distribution is active", async () => {
     await distributor.stop()
     await expect(distributor.mint(user0.address))
@@ -35,7 +58,7 @@ describe("Distributor", function() {
   })
 
   it("mint fails if mint amount is zero", async () => {
-    const distributorMock = await deployContract("Distributor", [latte.address, pool.address, user0.address, user0.address, 1, 5, 10])
+    const distributorMock = await deployContract("Distributor", [latte.address, pool.address, user0.address, user0.address, 1, 5, 20, 10])
     await expect(distributorMock.mint(user0.address, { value: "1" }))
       .to.be.revertedWith("Distributor: mint amount is zero")
   })

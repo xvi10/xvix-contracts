@@ -13,7 +13,7 @@ import "./interfaces/IPool.sol";
 contract Cafe is ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant PREMIUM_BASIS_POINTS = 500; // 5%
+    uint256 public constant PREMIUM_BASIS_POINTS = 1000; // 10%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable latte;

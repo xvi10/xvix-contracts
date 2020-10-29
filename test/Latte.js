@@ -157,10 +157,6 @@ describe("Latte", function() {
     await expect(latteMock.connect(user0).burn(user0.address, "2"))
       .to.be.revertedWith("Latte: forbidden")
     expect(await latteMock.balanceOf(user0.address)).eq("7")
-
-    await latteMock.connect(user1).burn(user0.address, "2")
-    expect(await latteMock.balanceOf(user0.address)).eq("5")
-    expect(await latteMock.totalSupply()).eq("15")
   })
 
   it("transfer", async () => {
@@ -186,8 +182,7 @@ describe("Latte", function() {
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(95, 18))
     expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3 - 5, 18))
 
-    // token reserve of cafe should not increase
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3 + 5, 18))
   })
 
   it("exempts", async () => {
