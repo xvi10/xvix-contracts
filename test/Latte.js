@@ -161,45 +161,45 @@ describe("Latte", function() {
 
   it("transfer", async () => {
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
-    await latte.transfer(user0.address, expandDecimals(200, 18)) // burn 6
+    await latte.transfer(user0.address, expandDecimals(200, 18)) // burn 10
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(200, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 6, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 10, 18))
 
-    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 3
-    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(200 - 100 - 3, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 6 - 3, 18))
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 6 + 3, 18))
+    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 5
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(200 - 100 - 5, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 10 - 5, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 10 + 5, 18))
   })
 
   it("toast", async () => {
     expect(await cafe.tokenReserve()).eq(expandDecimals(1000, 18))
-    await latte.transfer(user0.address, expandDecimals(100, 18)) // burn 3
+    await latte.transfer(user0.address, expandDecimals(100, 18)) // burn 5
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(100, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3, 18))
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 5, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 5, 18))
 
-    await latte.connect(user0).toast(expandDecimals(5, 18)) // burn 5
-    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(95, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 3 - 5, 18))
+    await latte.connect(user0).toast(expandDecimals(7, 18)) // burn 7
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(93, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 5 - 7, 18))
 
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 3 + 5, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 5 + 7, 18))
   })
 
   it("exempts", async () => {
-    await latte.transfer(user0.address, expandDecimals(300, 18)) // burn 9
+    await latte.transfer(user0.address, expandDecimals(300, 18)) // burn 15
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 15, 18))
 
     await latte.addExemption(user0.address)
 
     await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 0
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300 - 100, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 15, 18))
 
     await latte.removeExemption(user0.address)
 
-    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 3
-    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300 - 100 - 100 - 3, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 9 - 3, 18))
+    await latte.connect(user0).transfer(user1.address, expandDecimals(100, 18)) // burn 5
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(300 - 100 - 100 - 5, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 15 - 5, 18))
   })
 })

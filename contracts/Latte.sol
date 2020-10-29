@@ -12,8 +12,17 @@ import "./interfaces/ICafe.sol";
 contract Latte is IERC20, ILatte {
     using SafeMath for uint256;
 
-    uint256 public constant BURN_BASIS_POINTS = 300; // 3%
+    struct Ledger {
+        uint32 slot0;
+        uint96 balance0;
+        uint32 slot1;
+        uint96 balance1;
+    }
+
+    uint256 public constant BURN_BASIS_POINTS = 500; // 5%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
+
+    uint256 public constant BURN_INTERVAl = 7 days;
 
     string public constant name = "Latte";
     string public constant symbol = "LATTE";
@@ -31,6 +40,11 @@ contract Latte is IERC20, ILatte {
     uint256 public override totalSupply;
 
     mapping (address => bool) public exemptions;
+
+    // account => ledger
+    mapping (address => Ledger) ledgers;
+    // account => slot => burn amount
+    mapping (address => mapping (uint256 => uint256)) burnRegistry;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
@@ -100,21 +114,51 @@ contract Latte is IERC20, ILatte {
         exemptions[_account] = false;
     }
 
-    function mint(address _account, uint256 _amount) external override returns(bool) {
+    function mint(address _account, uint256 _amount) external override returns (bool) {
         require(msg.sender == cafe || msg.sender == distributor, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
     }
 
-    function burn(address _account, uint256 _amount) external override returns(bool) {
+    function burn(address _account, uint256 _amount) external override returns (bool) {
         require(msg.sender == pool, "Latte: forbidden");
         _burn(_account, _amount);
         return true;
     }
 
-    function toast(uint256 _amount) external returns(bool) {
+    function toast(uint256 _amount) external returns (bool) {
         _burn(msg.sender, _amount);
         return true;
+    }
+
+    function roast(address _account, address _feeTo) external returns (bool) {
+        uint256 toBurn = getBurnAllowance(_account);
+        require(toBurn > 0, "Latte: burn amount is zero");
+        _burn(_account, toBurn.mul(2)); // burn twice the burn amount
+        _mint(_feeTo, toBurn); // mint the fee to the user
+
+        return true;
+    }
+
+    function getBurnAllowance(address _account) public view returns (uint256) {
+        uint32 slot = getLatestSlot();
+
+        Ledger memory ledger = ledgers[_account];
+        uint256 burnt = burnRegistry[_account][slot - 1]; // amount burnt in previous slot
+
+        if (ledger.slot1 < slot && ledger.balance1 > 0) {
+            return _getBurnAmount(uint256(ledger.balance1)).sub(burnt);
+        }
+
+        if (ledger.slot0 < slot && ledger.balance0 > 0) {
+            return _getBurnAmount(uint256(ledger.balance0)).sub(burnt);
+        }
+
+        return 0;
+    }
+
+    function getLatestSlot() public view returns (uint32) {
+        return uint32(block.timestamp / BURN_INTERVAl);
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
@@ -125,25 +169,59 @@ contract Latte is IERC20, ILatte {
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
+        _updateLedger(_sender);
+        _updateLedger(_recipient);
+
         if (!exemptions[msg.sender]) {
-            uint256 burnAmount = _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-            _burn(_sender, burnAmount);
+            _burn(_sender, _getBurnAmount(_amount));
         }
+    }
+
+    function _getBurnAmount(uint256 _amount) private pure returns (uint256) {
+        return _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+    }
+
+    function _updateLedger(address _account) private {
+        uint96 balance = uint96(balances[_account]);
+        require(balance < uint96(-1), "Latte: balance is too large");
+
+        uint32 slot = getLatestSlot();
+
+        Ledger storage ledger = ledgers[_account];
+        if (ledger.slot1 != slot) {
+            ledger.slot0 = ledger.slot1;
+            ledger.balance0 = ledger.balance1;
+        }
+
+        ledger.slot1 = slot;
+        ledger.balance1 = balance;
     }
 
     function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: mint to the zero address");
+        if (_amount == 0) {
+            return;
+        }
 
         totalSupply = totalSupply.add(_amount);
         balances[_account] = balances[_account].add(_amount);
+        _updateLedger(_account);
+
         emit Transfer(address(0), _account, _amount);
     }
 
     function _burn(address _account, uint256 _amount) private {
         require(_account != address(0), "Latte: burn from the zero address");
+        if (_amount == 0) {
+            return;
+        }
 
         balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
         totalSupply = totalSupply.sub(_amount);
+        _updateLedger(_account);
+
+        uint256 slot = getLatestSlot() - 1;
+        burnRegistry[_account][slot] = burnRegistry[_account][slot].add(_amount);
 
         ICafe(cafe).increaseTokenReserve(_amount);
         emit Transfer(_account, address(0), _amount);
