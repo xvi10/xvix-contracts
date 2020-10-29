@@ -7,7 +7,7 @@ use(solidity)
 
 describe("Distributor", function() {
   const provider = waffle.provider
-  const [wallet, user0] = provider.getWallets()
+  const [wallet, user0, user1] = provider.getWallets()
   let latte
   let distributor
   let pool
@@ -23,11 +23,11 @@ describe("Distributor", function() {
     fund = fixtures.fund
   })
 
-  if("inits", async () => {
+  it("inits", async () => {
     expect(await distributor.latte()).eq(latte.address)
     expect(await distributor.pool()).eq(pool.address)
-    expect(await distributor.lp()).eq(lp.address)
-    expect(await distributor.fund()).eq(fund.address)
+    expect(await distributor.lp()).eq(lp)
+    expect(await distributor.fund()).eq(fund)
     expect(await distributor.multiplier()).eq(5)
     expect(await distributor.divisor()).eq(2)
     expect(await distributor.ethMaxCap()).eq(expandDecimals(20, 18))
@@ -44,6 +44,15 @@ describe("Distributor", function() {
     expect(await distributor.ethSoftCap()).eq(expandDecimals(15, 18))
     await distributor.setSoftCap(expandDecimals(20, 18))
     expect(await distributor.ethSoftCap()).eq(expandDecimals(20, 18))
+  })
+
+  it("setFund", async () => {
+    await expect(distributor.connect(user0).setFund(user1.address))
+      .to.be.revertedWith("Distributor: forbidden")
+
+    expect(await distributor.fund()).eq(fund)
+    await distributor.setFund(user1.address)
+    expect(await distributor.fund()).eq(user1.address)
   })
 
   it("mint fails unless distribution is active", async () => {
@@ -85,6 +94,28 @@ describe("Distributor", function() {
     expect((await provider.getBalance(lp)).sub(lpBalance)).eq(expandDecimals(2, 18)) // 20% of 10
     expect((await provider.getBalance(fund)).sub(fundBalance)).eq(expandDecimals(2, 18)) // 20% of 10
     expect((await provider.getBalance(pool.address)).sub(poolBalance)).eq(expandDecimals(6, 18)) // 60% of 10
+
+    expect(await provider.getBalance(distributor.address)).eq("0")
+  })
+
+  it("mints to fund", async () => {
+    expect(await provider.getBalance(distributor.address)).eq("0")
+    expect(await latte.balanceOf(user0.address)).eq("0")
+    expect(await latte.balanceOf(lp)).eq("0")
+
+    await distributor.setFund(pool.address)
+
+    const lpBalance = await provider.getBalance(lp)
+    const fundBalance = await provider.getBalance(fund)
+    const poolBalance = await provider.getBalance(pool.address)
+
+    await distributor.mint(user0.address, { value: expandDecimals(10, 18) })
+
+    expect(await latte.balanceOf(user0.address)).eq(expandDecimals(25, 18))
+    expect(await latte.balanceOf(lp)).eq(expandDecimals(5, 18)) // 20% of 25
+    expect((await provider.getBalance(lp)).sub(lpBalance)).eq(expandDecimals(2, 18)) // 20% of 10
+    expect((await provider.getBalance(fund)).sub(fundBalance)).eq(0) // 20% of 10
+    expect((await provider.getBalance(pool.address)).sub(poolBalance)).eq(expandDecimals(8, 18)) // 80% of 10
 
     expect(await provider.getBalance(distributor.address)).eq("0")
   })

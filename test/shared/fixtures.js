@@ -21,8 +21,8 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
-  const lp = "0xe19a173f0d35dcfc706dd3adb2260f5c7431f720"
-  const fund = "0xadce46a8724eb9828391648302c58c483e0d777a"
+  const lp = "0xe19A173F0d35dcFC706dD3Adb2260f5c7431f720"
+  const fund = "0xADCE46A8724eB9828391648302C58C483e0d777A"
 
   const initialSupply = expandDecimals(1000, 18)
   const latte = await deployContract("Latte", [initialSupply])

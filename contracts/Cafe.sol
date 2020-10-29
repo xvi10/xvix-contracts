@@ -41,7 +41,8 @@ contract Cafe is ReentrancyGuard {
         ethReserve = ethReserve.add(msg.value);
         tokenReserve = tokenReserve.sub(toMint);
 
-        IPool(pool).fund{value: msg.value}();
+        (bool success,) = pool.call{value: msg.value}("");
+        require(success, "Cafe: transfer to pool failed");
 
         emit Mint(receiver, toMint);
     }

@@ -50,7 +50,7 @@ describe("Cafe", function() {
     expect(mintAmount0).eq("2493765586034912719")
 
     // the mint amount is capped to the mint amount of the pool - 5%
-    await pool.fund({ value: expandDecimals(500, 18) })
+    await wallet.sendTransaction({ to: pool.address, value: expandDecimals(500, 18) })
     const mintAmount1 = await cafe.getMintAmount(expandDecimals(1, 18))
     expect(mintAmount1).eq("1800000000000000000")
   })
@@ -92,7 +92,7 @@ describe("Cafe", function() {
     expect(await latte.balanceOf(user0.address)).eq("0")
     expect(await latte.balanceOf(user1.address)).eq("0")
     expect(await provider.getBalance(pool.address)).eq("0")
-    await pool.fund({ value: expandDecimals(500, 18) })
+    await wallet.sendTransaction({ to: pool.address, value: expandDecimals(500, 18) })
 
     await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
     const minted = "1800000000000000000"

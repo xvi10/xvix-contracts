@@ -19,6 +19,8 @@ contract Latte is IERC20, ILatte {
         uint96 balance1;
     }
 
+    uint256 public constant FEE_DIVISOR = 5;
+
     uint256 public constant BURN_BASIS_POINTS = 500; // 5%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
@@ -134,8 +136,10 @@ contract Latte is IERC20, ILatte {
     function roast(address _account, address _feeTo) external returns (bool) {
         uint256 toBurn = getBurnAllowance(_account);
         require(toBurn > 0, "Latte: burn amount is zero");
-        _burn(_account, toBurn.mul(2)); // burn twice the burn amount
-        _mint(_feeTo, toBurn); // mint the fee to the user
+
+        uint256 fee = toBurn.div(FEE_DIVISOR);
+        _burn(_account, toBurn.add(fee));
+        _mint(_feeTo, fee);
 
         return true;
     }

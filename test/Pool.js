@@ -24,7 +24,8 @@ describe("Pool", function() {
     expect(await pool.capital()).eq("0")
 
     const funding = expandDecimals(7, 18)
-    await pool.fund({ value: funding })
+    await wallet.sendTransaction({ to: pool.address, value: funding })
+
     expect(await provider.getBalance(pool.address)).eq(funding)
     expect(await pool.capital()).eq(funding)
   })
@@ -33,13 +34,13 @@ describe("Pool", function() {
     const burnAmount = expandDecimals(10, 18)
     expect(await pool.getRefundAmount(burnAmount)).eq("0")
 
-    await pool.fund({ value: expandDecimals(300, 18) })
+    await wallet.sendTransaction({ to: pool.address, value: expandDecimals(300, 18) })
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18)) // 10 / 1000 * 300
   })
 
   it("getMintAmount", async () => {
     expect(await pool.getMintAmount("1")).eq("0")
-    await pool.fund({ value: expandDecimals(200, 18) })
+    await wallet.sendTransaction({ to: pool.address, value: expandDecimals(200, 18) })
     expect(await pool.getMintAmount("1")).eq("5")
   })
 
@@ -51,7 +52,7 @@ describe("Pool", function() {
       .to.be.revertedWith("Pool: refund amount is zero")
 
     const funding = expandDecimals(300, 18)
-    await pool.fund({ value: funding })
+    await wallet.sendTransaction({ to: pool.address, value: funding })
     expect(await pool.capital()).eq(funding)
     await expect(pool.refund(user0.address, "1"))
       .to.be.revertedWith("Pool: refund amount is zero")

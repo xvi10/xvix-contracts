@@ -21,7 +21,7 @@ contract Distributor is ReentrancyGuard {
     address public immutable latte;
     address public immutable pool;
     address public immutable lp; // liquidity provider
-    address public immutable fund; // marketing / dev fund
+    address public fund; // marketing / dev fund
     address public immutable gov;
 
     uint256 public divisor;
@@ -58,6 +58,11 @@ contract Distributor is ReentrancyGuard {
         ethSoftCap = _ethSoftCap;
     }
 
+    function setFund(address _fund) external {
+        require(msg.sender == gov, "Distributor: forbidden");
+        fund = _fund;
+    }
+
     function mint(address receiver) external payable nonReentrant {
         require(active, "Distributor: not active");
         require(msg.value > 0, "Distributor: insufficient value");
@@ -79,7 +84,8 @@ contract Distributor is ReentrancyGuard {
         require(success, "Distributor: transfer to fund failed");
 
         uint256 poolETH = msg.value.sub(lpETH).sub(fundETH);
-        IPool(pool).fund{value: poolETH}();
+        (success,) = pool.call{value: poolETH}("");
+        require(success, "Distributor: transfer to pool failed");
 
         ethReceived = ethReceived.add(msg.value);
         require(ethReceived <= ethSoftCap, "Distributor: cap reached");
