@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { expandDecimals, bigNumberify } = require("./shared/utilities")
+const { expandDecimals, bigNumberify, increaseTime, mineBlock } = require("./shared/utilities")
 
 use(solidity)
 
@@ -109,5 +109,12 @@ describe("Cafe", function() {
     expect(bigNumberify(remaining).add(minted)).eq(expandDecimals(1000, 18))
     const k = (await cafe.ethReserve()).mul(await cafe.tokenReserve())
     expect(k).eq("400278200000000000000000000000000000000000")
+
+    expect(await latte.getBurnAllowance(user1.address)).eq("0")
+
+    increaseTime(provider, 8 * 24 * 60 * 60)
+    mineBlock(provider)
+
+    expect(await latte.getBurnAllowance(user1.address)).eq("90000000000000000")
   })
 })

@@ -22,10 +22,24 @@ async function gasUsed(provider, tx) {
   return (await provider.getTransactionReceipt(tx.hash)).gasUsed
 }
 
+async function getBlockTime(provider) {
+  const blockNumber = await provider.getBlockNumber()
+  const block = await provider.getBlock(blockNumber)
+  return block.timestamp
+}
+
+async function getLatestSlot(provider) {
+  const blockTime = await getBlockTime(provider)
+  const interval = 7 * 24 * 60 * 60
+  return parseInt(blockTime / interval)
+}
+
 module.exports = {
   bigNumberify,
   expandDecimals,
   mineBlock,
   increaseTime,
-  gasUsed
+  gasUsed,
+  getBlockTime,
+  getLatestSlot
 }

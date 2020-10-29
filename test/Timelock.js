@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { expandDecimals, increaseTime, mineBlock } = require("./shared/utilities")
+const { expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
 const { addLiquidityETH, removeLiquidityETH } = require("./shared/uniswap")
 
 use(solidity)
@@ -23,9 +23,8 @@ describe("Timelock", function() {
     pair = fixtures.pair
     market = fixtures.market
 
-    const blockNumber = await provider.getBlockNumber()
-    const block = await provider.getBlock(blockNumber)
-    releaseTime = block.timestamp + 600
+    const blockTime = await getBlockTime(provider)
+    releaseTime = blockTime + 600
     timelock = await deployContract("Timelock", [pair.address, user0.address, releaseTime])
   })
 

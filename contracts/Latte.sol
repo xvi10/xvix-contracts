@@ -44,9 +44,9 @@ contract Latte is IERC20, ILatte {
     mapping (address => bool) public exemptions;
 
     // account => ledger
-    mapping (address => Ledger) ledgers;
+    mapping (address => Ledger) public ledgers;
     // account => slot => burn amount
-    mapping (address => mapping (uint256 => uint256)) burnRegistry;
+    mapping (address => mapping (uint256 => uint256)) public burnRegistry;
 
     constructor(uint256 initialSupply) public {
         gov = msg.sender;
@@ -145,17 +145,23 @@ contract Latte is IERC20, ILatte {
     }
 
     function getBurnAllowance(address _account) public view returns (uint256) {
+        if (exemptions[_account]) {
+            return 0;
+        }
+
         uint32 slot = getLatestSlot();
 
         Ledger memory ledger = ledgers[_account];
         uint256 burnt = burnRegistry[_account][slot - 1]; // amount burnt in previous slot
 
         if (ledger.slot1 < slot && ledger.balance1 > 0) {
-            return _getBurnAmount(uint256(ledger.balance1)).sub(burnt);
+            uint256 burnAmount = _getBurnAmount(uint256(ledger.balance1));
+            return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
         }
 
         if (ledger.slot0 < slot && ledger.balance0 > 0) {
-            return _getBurnAmount(uint256(ledger.balance0)).sub(burnt);
+            uint256 burnAmount = _getBurnAmount(uint256(ledger.balance0));
+            return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
         }
 
         return 0;
