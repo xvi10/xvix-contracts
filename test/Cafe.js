@@ -2,6 +2,7 @@ const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, bigNumberify, increaseTime, mineBlock } = require("./shared/utilities")
+const { getLatestSlot, expectLedger } = require("./shared/latte")
 
 use(solidity)
 
@@ -70,6 +71,8 @@ describe("Cafe", function() {
     expect(await latte.balanceOf(user1.address)).eq("0")
     expect(await provider.getBalance(pool.address)).eq("0")
     expect(await pool.capital()).eq("0")
+    await expectLedger(latte, user0.address, 0, 0, 0, 0)
+    await expectLedger(latte, user1.address, 0, 0, 0, 0)
 
     await cafe.connect(user0).mint(user1.address, { value: expandDecimals(1, 18) })
     const minted = "2493765586034912719"
@@ -78,6 +81,10 @@ describe("Cafe", function() {
     expect(await latte.balanceOf(user1.address)).eq(minted)
     expect(await provider.getBalance(pool.address)).eq(expandDecimals(1, 18))
     expect(await pool.capital()).eq(expandDecimals(1, 18))
+
+    const slot = await getLatestSlot(provider)
+    await expectLedger(latte, user0.address, 0, 0, 0, 0)
+    await expectLedger(latte, user1.address, 0, 0, slot, minted)
 
     expect(await latte.totalSupply()).eq(expandDecimals(1000, 18).add(minted))
 

@@ -28,18 +28,11 @@ async function getBlockTime(provider) {
   return block.timestamp
 }
 
-async function getLatestSlot(provider) {
-  const blockTime = await getBlockTime(provider)
-  const interval = 7 * 24 * 60 * 60
-  return parseInt(blockTime / interval)
-}
-
 module.exports = {
   bigNumberify,
   expandDecimals,
   mineBlock,
   increaseTime,
   gasUsed,
-  getBlockTime,
-  getLatestSlot
+  getBlockTime
 }
