@@ -56,11 +56,6 @@ describe("Cafe", function() {
     expect(mintAmount1).eq("1800000000000000000")
   })
 
-  it("increaseTokenReserve fails unless sender is latte", async () => {
-    await expect(cafe.increaseTokenReserve("1"))
-      .to.be.revertedWith("Cafe: forbidden")
-  })
-
   it("mint fails if value is zero", async () => {
     await expect(cafe.mint(user0.address, { value: "0" }))
       .to.be.revertedWith("Cafe: insufficient value")

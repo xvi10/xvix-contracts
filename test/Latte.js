@@ -42,6 +42,10 @@ describe("Latte", function() {
     expect(await latte.gov()).eq(wallet.address)
   })
 
+  it("inits max supply", async () => {
+    expect(await latte.maxSupply()).eq(expandDecimals(2000, 18))
+  })
+
   it("inits ledger", async () => {
     const slot = await getLatestSlot(provider)
     await expectLedger(latte, wallet.address, 0, 0, slot, expandDecimals(1000, 18))
@@ -124,7 +128,7 @@ describe("Latte", function() {
   })
 
   it("mint can be called by distributor", async () => {
-    const latteMock = await deployContract("Latte", ["10"])
+    const latteMock = await deployContract("Latte", ["10", "20"])
     await latteMock.setDistributor(user1.address)
     expect(await latteMock.balanceOf(user1.address)).eq("0")
 
@@ -138,7 +142,7 @@ describe("Latte", function() {
   })
 
   it("mint can be called by cafe", async () => {
-    const latteMock = await deployContract("Latte", ["10"])
+    const latteMock = await deployContract("Latte", ["10", "20"])
     await latteMock.setCafe(user1.address)
     expect(await latteMock.balanceOf(user1.address)).eq("0")
 
@@ -152,7 +156,7 @@ describe("Latte", function() {
   })
 
   it("burn fails unless sender is pool", async () => {
-    const latteMock = await deployContract("Latte", ["10"])
+    const latteMock = await deployContract("Latte", ["10", "20"])
     await latteMock.setCafe(user1.address)
     await latteMock.connect(user1).mint(user0.address, "7")
     expect(await latteMock.balanceOf(user0.address)).eq("7")

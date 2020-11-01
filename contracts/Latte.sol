@@ -6,7 +6,6 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
-import "./interfaces/ICafe.sol";
 
 
 contract Latte is IERC20, ILatte {
@@ -41,7 +40,9 @@ contract Latte is IERC20, ILatte {
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
+
     uint256 public override totalSupply;
+    uint256 public override maxSupply;
 
     mapping (address => bool) public exemptions;
 
@@ -50,8 +51,9 @@ contract Latte is IERC20, ILatte {
     // account => slot => burn amount
     mapping (address => mapping (uint256 => uint256)) public burnRegistry;
 
-    constructor(uint256 initialSupply) public {
+    constructor(uint256 initialSupply, uint256 _maxSupply) public {
         gov = msg.sender;
+        maxSupply = _maxSupply;
         _mint(msg.sender, initialSupply);
     }
 
@@ -220,6 +222,8 @@ contract Latte is IERC20, ILatte {
         }
 
         totalSupply = totalSupply.add(_amount);
+        require(totalSupply <= maxSupply, "Latte: max supply exceeded");
+
         balances[_account] = balances[_account].add(_amount);
         _updateLedger(_account);
 
@@ -239,7 +243,6 @@ contract Latte is IERC20, ILatte {
         uint256 slot = getLatestSlot() - 1;
         burnRegistry[_account][slot] = burnRegistry[_account][slot].add(_amount);
 
-        ICafe(cafe).increaseTokenReserve(_amount);
         emit Transfer(_account, address(0), _amount);
     }
 

@@ -25,7 +25,8 @@ async function loadFixtures(provider, wallet) {
   const fund = "0xADCE46A8724eB9828391648302C58C483e0d777A"
 
   const initialSupply = expandDecimals(1000, 18)
-  const latte = await deployContract("Latte", [initialSupply])
+  const maxSupply = expandDecimals(2000, 18)
+  const latte = await deployContract("Latte", [initialSupply, maxSupply])
   const weth = await deployContract("WETH", [])
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
@@ -37,7 +38,7 @@ async function loadFixtures(provider, wallet) {
 
   const pool = await deployContract("Pool", [latte.address])
   const market = await deployContract("Market", [weth.address, factory.address])
-  const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18), initialSupply])
+  const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18)])
   const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 5, 2, expandDecimals(20, 18), expandDecimals(15, 18)])
 
   await latte.setCafe(cafe.address)

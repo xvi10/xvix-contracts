@@ -20,15 +20,13 @@ contract Cafe is ReentrancyGuard {
     address public immutable pool;
 
     uint256 public ethReserve;
-    uint256 public tokenReserve;
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _latte, address _pool, uint256 _ethReserve, uint256 _tokenReserve) public {
+    constructor(address _latte, address _pool, uint256 _ethReserve) public {
         latte = _latte;
         pool = _pool;
         ethReserve = _ethReserve;
-        tokenReserve = _tokenReserve;
     }
 
     function mint(address receiver) external payable nonReentrant {
@@ -39,7 +37,6 @@ contract Cafe is ReentrancyGuard {
 
         ILatte(latte).mint(receiver, toMint);
         ethReserve = ethReserve.add(msg.value);
-        tokenReserve = tokenReserve.sub(toMint);
 
         (bool success,) = pool.call{value: msg.value}("");
         require(success, "Cafe: transfer to pool failed");
@@ -47,16 +44,10 @@ contract Cafe is ReentrancyGuard {
         emit Mint(receiver, toMint);
     }
 
-    function increaseTokenReserve(uint256 _amount) external nonReentrant returns (bool) {
-        require(msg.sender == latte, "Cafe: forbidden");
-        tokenReserve = tokenReserve.add(_amount);
-        return true;
-    }
-
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
-        uint256 k = ethReserve.mul(tokenReserve);
+        uint256 k = ethReserve.mul(tokenReserve());
         uint256 a = k.div(ethReserve.add(_ethAmount));
-        uint256 mintable = tokenReserve.sub(a);
+        uint256 mintable = tokenReserve().sub(a);
         if (IPool(pool).capital() == 0) {
             return mintable;
         }
@@ -68,5 +59,11 @@ contract Cafe is ReentrancyGuard {
         uint256 premium = poolMax.mul(REDUCTION_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         uint256 max = poolMax.sub(premium);
         return mintable < max ? mintable : max;
+    }
+
+    function tokenReserve() public view returns (uint256) {
+        uint256 maxSupply = ILatte(latte).maxSupply();
+        uint256 totalSupply = IERC20(latte).totalSupply();
+        return maxSupply.sub(totalSupply);
     }
 }
