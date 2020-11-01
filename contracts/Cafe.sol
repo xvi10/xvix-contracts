@@ -45,19 +45,21 @@ contract Cafe is ReentrancyGuard {
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
+        if (IPool(pool).capital() == 0) {
+            return 0;
+        }
+
         uint256 k = ethReserve.mul(tokenReserve());
         uint256 a = k.div(ethReserve.add(_ethAmount));
         uint256 mintable = tokenReserve().sub(a);
-        if (IPool(pool).capital() == 0) {
-            return mintable;
-        }
 
         // the maximum tokens that can be minted is capped by the price floor of the pool
         // this ensures that minting tokens will never reduce the price floor
         // the maximum tokens is also further reduced so that the price floor will increase
         uint256 poolMax = IPool(pool).getMintAmount(_ethAmount);
-        uint256 premium = poolMax.mul(REDUCTION_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 max = poolMax.sub(premium);
+        uint256 reduction = poolMax.mul(REDUCTION_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 max = poolMax.sub(reduction);
+
         return mintable < max ? mintable : max;
     }
 

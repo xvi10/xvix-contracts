@@ -172,7 +172,7 @@ contract Latte is IERC20, ILatte {
     }
 
     function getLatestSlot() public view returns (uint32) {
-        return uint32(block.timestamp / BURN_INTERVAl);
+        return uint32(block.timestamp.div(BURN_INTERVAl));
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
@@ -200,8 +200,8 @@ contract Latte is IERC20, ILatte {
     }
 
     function _updateLedger(address _account) private {
-        uint96 balance = uint96(balances[_account]);
-        require(balance < uint96(-1), "Latte: balance is too large");
+        uint256 balance = balances[_account];
+        require(balance < uint256(uint96(-1)), "Latte: balance is too large");
 
         uint32 slot = getLatestSlot();
 
@@ -212,7 +212,7 @@ contract Latte is IERC20, ILatte {
         }
 
         ledger.slot1 = slot;
-        ledger.balance1 = balance;
+        ledger.balance1 = uint96(balance);
     }
 
     function _mint(address _account, uint256 _amount) private {
