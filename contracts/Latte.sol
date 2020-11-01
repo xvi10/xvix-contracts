@@ -19,9 +19,11 @@ contract Latte is IERC20, ILatte {
         uint96 balance1;
     }
 
-    uint256 public constant FEE_DIVISOR = 5;
+    uint256 public constant FEE_MULTIPLIER = 2;
+    uint256 public constant FEE_DIVISOR = 3;
 
-    uint256 public constant BURN_BASIS_POINTS = 500; // 5%
+    uint256 public constant TRANSFER_BURN_BASIS_POINTS = 100; // 1%
+    uint256 public constant WEEKLY_BURN_BASIS_POINTS = 300; // 3%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     uint256 public constant BURN_INTERVAl = 7 days;
@@ -137,7 +139,7 @@ contract Latte is IERC20, ILatte {
         uint256 toBurn = getBurnAllowance(_account);
         require(toBurn > 0, "Latte: burn amount is zero");
 
-        uint256 fee = toBurn.div(FEE_DIVISOR);
+        uint256 fee = toBurn.mul(FEE_MULTIPLIER).div(FEE_DIVISOR);
         _burn(_account, toBurn.add(fee));
         _mint(_feeTo, fee);
 
@@ -154,17 +156,17 @@ contract Latte is IERC20, ILatte {
         Ledger memory ledger = ledgers[_account];
         uint256 burnt = burnRegistry[_account][slot - 1]; // amount burnt in previous slot
 
+        uint256 balance = 0;
         if (ledger.slot1 < slot && ledger.balance1 > 0) {
-            uint256 burnAmount = _getBurnAmount(uint256(ledger.balance1));
-            return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
+            balance = uint256(ledger.balance1);
+        } else if (ledger.slot0 < slot && ledger.balance0 > 0) {
+            balance = uint256(ledger.balance0);
+        } else {
+            return 0;
         }
 
-        if (ledger.slot0 < slot && ledger.balance0 > 0) {
-            uint256 burnAmount = _getBurnAmount(uint256(ledger.balance0));
-            return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
-        }
-
-        return 0;
+        uint256 burnAmount = _getWeeklyBurnAmount(balance);
+        return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
     }
 
     function getLatestSlot() public view returns (uint32) {
@@ -183,12 +185,16 @@ contract Latte is IERC20, ILatte {
         _updateLedger(_recipient);
 
         if (!exemptions[msg.sender]) {
-            _burn(_sender, _getBurnAmount(_amount));
+            _burn(_sender, _getTransferBurnAmount(_amount));
         }
     }
 
-    function _getBurnAmount(uint256 _amount) private pure returns (uint256) {
-        return _amount.mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+    function _getWeeklyBurnAmount(uint256 _amount) private pure returns (uint256) {
+        return _amount.mul(WEEKLY_BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+    }
+
+    function _getTransferBurnAmount(uint256 _amount) private pure returns (uint256) {
+        return _amount.mul(TRANSFER_BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
     }
 
     function _updateLedger(address _account) private {

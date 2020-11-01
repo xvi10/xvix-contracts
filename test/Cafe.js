@@ -122,6 +122,6 @@ describe("Cafe", function() {
     increaseTime(provider, 8 * 24 * 60 * 60)
     mineBlock(provider)
 
-    expect(await latte.getBurnAllowance(user1.address)).eq("90000000000000000")
+    expect(await latte.getBurnAllowance(user1.address)).eq("54000000000000000")
   })
 })

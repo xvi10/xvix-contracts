@@ -47,17 +47,17 @@ describe("Pool", function() {
 
   it("refund", async () => {
     const transferAmount = expandDecimals(100, 18)
-    await latte.transfer(user0.address, transferAmount) // 5 burnt
+    await latte.transfer(user0.address, transferAmount) // 1 burnt
     const slot = await getLatestSlot(provider)
     await expectLedger(latte, user0.address, 0, 0, slot, transferAmount)
 
     const burnAmount = expandDecimals(10, 18)
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1005, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1001, 18))
     expect(await pool.capital()).eq("0")
     await expect(pool.connect(user0).refund(user1.address, burnAmount))
       .to.be.revertedWith("Pool: refund amount is zero")
 
-    const funding = expandDecimals(2985, 17) // 995 * 3
+    const funding = expandDecimals(2997, 17) // (1000 - 1) * 3
     await wallet.sendTransaction({ to: pool.address, value: funding })
     expect(await pool.capital()).eq(funding)
     await expect(pool.connect(user0).refund(user1.address, "1"))
@@ -66,8 +66,11 @@ describe("Pool", function() {
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18))
 
     const userBalance1 = await provider.getBalance(user1.address)
-    expect(await latte.balanceOf(wallet.address)).eq("895000000000000000000")
-    expect(await latte.totalSupply()).eq(expandDecimals(995, 18))
+    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 100 - 1, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(999, 18))
+
+    await expectLedger(latte, user0.address, 0, 0, slot, transferAmount)
+    await expectLedger(latte, user1.address, 0, 0, 0, 0)
 
     await pool.connect(user0).refund(user1.address, burnAmount)
 
@@ -75,13 +78,13 @@ describe("Pool", function() {
     await expectLedger(latte, user1.address, 0, 0, 0, 0)
 
     const ethReceived = (await provider.getBalance(user1.address)).sub(userBalance1)
-    expect(ethReceived).eq(expandDecimals(3, 18))
-    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 100 - 5, 18))
-    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 5 - 10, 18))
+      expect(ethReceived).eq(expandDecimals(3, 18))
+    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 100 - 1, 18))
+    expect(await latte.totalSupply()).eq(expandDecimals(1000 - 1 - 10, 18))
 
-    expect(await pool.capital()).eq(expandDecimals(2985 - 30, 17))
+    expect(await pool.capital()).eq(expandDecimals(2997 - 30, 17))
     expect(await pool.getRefundAmount(burnAmount)).eq(expandDecimals(3, 18))
 
-    expect(await cafe.tokenReserve()).eq(expandDecimals(1015, 18))
+    expect(await cafe.tokenReserve()).eq(expandDecimals(1000 + 1 + 10, 18))
   })
 })

@@ -28,11 +28,11 @@ describe("Market", function() {
     expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
     const tokenAmount = expandDecimals(200, 18)
     const ethAmount = expandDecimals(50, 18)
-    await addLiquidityETH({ router, wallet, token: latte, tokenAmount, ethAmount }) // burn 10
-    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 200 - 10, 18))
+    await addLiquidityETH({ router, wallet, token: latte, tokenAmount, ethAmount }) // burn 2
+    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 200 - 2, 18))
 
     await addLiquidityETH({ router: market, wallet, token: latte, tokenAmount, ethAmount })
-    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 200 - 200 - 10, 18))
+    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(1000 - 200 - 200 - 2, 18))
   })
 
   it("buyTokens", async () => {
@@ -49,8 +49,8 @@ describe("Market", function() {
     const ethAmount = expandDecimals(200, 18)
     await addLiquidityETH({ router: market, wallet, token: latte, tokenAmount, ethAmount })
     expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(500, 18))
-    await sellTokens({ router, wallet, weth, token: latte, tokenAmount: expandDecimals(100, 18) }) // burn 5
-    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(500 - 100 - 5, 18))
+    await sellTokens({ router, wallet, weth, token: latte, tokenAmount: expandDecimals(100, 18) }) // burn 1
+    expect(await latte.balanceOf(wallet.address)).eq(expandDecimals(500 - 100 - 1, 18))
   })
 
   it("removeLiquidityETH", async () => {

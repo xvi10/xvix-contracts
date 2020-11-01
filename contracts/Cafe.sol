@@ -13,7 +13,7 @@ import "./interfaces/IPool.sol";
 contract Cafe is ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant PREMIUM_BASIS_POINTS = 1000; // 10%
+    uint256 public constant REDUCTION_BASIS_POINTS = 1000; // 10%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable latte;
@@ -63,9 +63,9 @@ contract Cafe is ReentrancyGuard {
 
         // the maximum tokens that can be minted is capped by the price floor of the pool
         // this ensures that minting tokens will never reduce the price floor
-        // the maximum tokens is also reduced by a premium so that the price floor will increase
+        // the maximum tokens is also further reduced so that the price floor will increase
         uint256 poolMax = IPool(pool).getMintAmount(_ethAmount);
-        uint256 premium = poolMax.mul(PREMIUM_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        uint256 premium = poolMax.mul(REDUCTION_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         uint256 max = poolMax.sub(premium);
         return mintable < max ? mintable : max;
     }
