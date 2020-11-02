@@ -51,6 +51,9 @@ contract Latte is IERC20, ILatte {
     // account => slot => burn amount
     mapping (address => mapping (uint256 => uint256)) public burnRegistry;
 
+    event Toast(address indexed account, uint256 value);
+    event Roast(address indexed sender, address indexed account, uint256 value);
+
     constructor(uint256 initialSupply, uint256 _maxSupply) public {
         gov = msg.sender;
         maxSupply = _maxSupply;
@@ -134,6 +137,7 @@ contract Latte is IERC20, ILatte {
 
     function toast(uint256 _amount) external returns (bool) {
         _burn(msg.sender, _amount);
+        emit Toast(msg.sender, _amount);
         return true;
     }
 
@@ -145,6 +149,7 @@ contract Latte is IERC20, ILatte {
         _burn(_account, toBurn.add(fee));
         _mint(_feeTo, fee);
 
+        emit Roast(msg.sender, _account, toBurn);
         return true;
     }
 
