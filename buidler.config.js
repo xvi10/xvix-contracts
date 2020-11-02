@@ -1,3 +1,5 @@
+const { ROPSTEN_URL, ROPSTEN_DEPLOY_KEY } = require("./env.json")
+
 usePlugin("@nomiclabs/buidler-waffle");
 usePlugin("@nomiclabs/buidler-solhint");
 // usePlugin("buidler-gas-reporter");
@@ -17,7 +19,14 @@ task("accounts", "Prints the list of accounts", async () => {
 // defaultNetwork, networks, solc, and paths.
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
-  // This is a sample solc configuration that specifies which version of solc to use
+  networks: {
+    buidlerevm: {
+    },
+    ropsten: {
+      url: ROPSTEN_URL,
+      accounts: [ROPSTEN_DEPLOY_KEY]
+    }
+  },
   solc: {
     version: "0.6.12",
     optimizer: {

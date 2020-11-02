@@ -6,7 +6,8 @@ import '../interfaces/IUniswapV2Pair.sol';
 
 import "../libraries/math/SafeMath.sol";
 
-library UniswapV2Library {
+// Mock the library because the UniswapV2Pair bytecode hash is different for localhost
+library UniswapV2LibraryMock {
     using SafeMath for uint;
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
@@ -23,7 +24,7 @@ library UniswapV2Library {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
+                hex'bf679b48085b196f9d52b03e95c7440ff82bf0e67fff5c19e2da17fd628ba9b2' // init code hash
             ))));
     }
 

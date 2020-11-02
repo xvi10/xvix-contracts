@@ -3,7 +3,7 @@
 pragma solidity 0.6.12;
 
 import './TransferHelper.sol';
-import './UniswapV2Library.sol';
+import '../mocks/UniswapV2LibraryMock.sol';
 
 import '../libraries/math/SafeMath.sol';
 import '../libraries/token/IERC20.sol';
@@ -46,16 +46,16 @@ contract UniswapV2Router is IUniswapV2Router {
         if (IUniswapV2Factory(factory).getPair(tokenA, tokenB) == address(0)) {
             IUniswapV2Factory(factory).createPair(tokenA, tokenB);
         }
-        (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
+        (uint reserveA, uint reserveB) = UniswapV2LibraryMock.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = UniswapV2LibraryMock.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
                 require(amountBOptimal >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = UniswapV2LibraryMock.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
                 require(amountAOptimal >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
@@ -73,7 +73,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint deadline
     ) external virtual ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        address pair = UniswapV2LibraryMock.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
         liquidity = IUniswapV2Pair(pair).mint(to);
@@ -94,7 +94,7 @@ contract UniswapV2Router is IUniswapV2Router {
             amountTokenMin,
             amountETHMin
         );
-        address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        address pair = UniswapV2LibraryMock.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
@@ -113,10 +113,10 @@ contract UniswapV2Router is IUniswapV2Router {
         address to,
         uint deadline
     ) public virtual ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
+        address pair = UniswapV2LibraryMock.pairFor(factory, tokenA, tokenB);
         IUniswapV2ERC20(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
         (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
-        (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
+        (address token0,) = UniswapV2LibraryMock.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
@@ -171,11 +171,11 @@ contract UniswapV2Router is IUniswapV2Router {
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = UniswapV2Library.sortTokens(input, output);
+            (address token0,) = UniswapV2LibraryMock.sortTokens(input, output);
             uint amountOut = amounts[i + 1];
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
-            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
-            IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(
+            address to = i < path.length - 2 ? UniswapV2LibraryMock.pairFor(factory, output, path[i + 2]) : _to;
+            IUniswapV2Pair(UniswapV2LibraryMock.pairFor(factory, input, output)).swap(
                 amount0Out, amount1Out, to, new bytes(0)
             );
         }
@@ -187,10 +187,10 @@ contract UniswapV2Router is IUniswapV2Router {
         address to,
         uint deadline
     ) external virtual ensure(deadline) returns (uint[] memory amounts) {
-        amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
+        amounts = UniswapV2LibraryMock.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -201,10 +201,10 @@ contract UniswapV2Router is IUniswapV2Router {
         address to,
         uint deadline
     ) external virtual ensure(deadline) returns (uint[] memory amounts) {
-        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+        amounts = UniswapV2LibraryMock.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -217,10 +217,10 @@ contract UniswapV2Router is IUniswapV2Router {
         returns (uint[] memory amounts)
     {
         require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsOut(factory, msg.value, path);
+        amounts = UniswapV2LibraryMock.getAmountsOut(factory, msg.value, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
     function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
@@ -230,10 +230,10 @@ contract UniswapV2Router is IUniswapV2Router {
         returns (uint[] memory amounts)
     {
         require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+        amounts = UniswapV2LibraryMock.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -246,10 +246,10 @@ contract UniswapV2Router is IUniswapV2Router {
         returns (uint[] memory amounts)
     {
         require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
+        amounts = UniswapV2LibraryMock.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -264,10 +264,10 @@ contract UniswapV2Router is IUniswapV2Router {
         returns (uint[] memory amounts)
     {
         require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
-        amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
+        amounts = UniswapV2LibraryMock.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= msg.value, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -278,18 +278,18 @@ contract UniswapV2Router is IUniswapV2Router {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = UniswapV2Library.sortTokens(input, output);
-            IUniswapV2Pair pair = IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output));
+            (address token0,) = UniswapV2LibraryMock.sortTokens(input, output);
+            IUniswapV2Pair pair = IUniswapV2Pair(UniswapV2LibraryMock.pairFor(factory, input, output));
             uint amountInput;
             uint amountOutput;
             { // scope to avoid stack too deep errors
             (uint reserve0, uint reserve1,) = pair.getReserves();
             (uint reserveInput, uint reserveOutput) = input == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
             amountInput = IERC20(input).balanceOf(address(pair)).sub(reserveInput);
-            amountOutput = UniswapV2Library.getAmountOut(amountInput, reserveInput, reserveOutput);
+            amountOutput = UniswapV2LibraryMock.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOutput) : (amountOutput, uint(0));
-            address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? UniswapV2LibraryMock.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -301,7 +301,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint deadline
     ) external virtual ensure(deadline) {
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amountIn
         );
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
@@ -324,7 +324,7 @@ contract UniswapV2Router is IUniswapV2Router {
         require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
         uint amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amountIn));
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
@@ -345,7 +345,7 @@ contract UniswapV2Router is IUniswapV2Router {
     {
         require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, UniswapV2Library.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, UniswapV2LibraryMock.pairFor(factory, path[0], path[1]), amountIn
         );
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint amountOut = IERC20(WETH).balanceOf(address(this));
@@ -356,7 +356,7 @@ contract UniswapV2Router is IUniswapV2Router {
 
     // **** LIBRARY FUNCTIONS ****
     function quote(uint amountA, uint reserveA, uint reserveB) public pure virtual returns (uint amountB) {
-        return UniswapV2Library.quote(amountA, reserveA, reserveB);
+        return UniswapV2LibraryMock.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut)
@@ -365,7 +365,7 @@ contract UniswapV2Router is IUniswapV2Router {
         virtual
         returns (uint amountOut)
     {
-        return UniswapV2Library.getAmountOut(amountIn, reserveIn, reserveOut);
+        return UniswapV2LibraryMock.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
@@ -374,7 +374,7 @@ contract UniswapV2Router is IUniswapV2Router {
         virtual
         returns (uint amountIn)
     {
-        return UniswapV2Library.getAmountIn(amountOut, reserveIn, reserveOut);
+        return UniswapV2LibraryMock.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(uint amountIn, address[] memory path)
@@ -383,7 +383,7 @@ contract UniswapV2Router is IUniswapV2Router {
         virtual
         returns (uint[] memory amounts)
     {
-        return UniswapV2Library.getAmountsOut(factory, amountIn, path);
+        return UniswapV2LibraryMock.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(uint amountOut, address[] memory path)
@@ -392,6 +392,6 @@ contract UniswapV2Router is IUniswapV2Router {
         virtual
         returns (uint[] memory amounts)
     {
-        return UniswapV2Library.getAmountsIn(factory, amountOut, path);
+        return UniswapV2LibraryMock.getAmountsIn(factory, amountOut, path);
     }
 }

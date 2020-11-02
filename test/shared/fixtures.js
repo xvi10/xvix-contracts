@@ -1,8 +1,5 @@
 const WETH = require("../../artifacts/WETH.json")
 const UniswapV2Pair = require("../../artifacts/UniswapV2Pair.json")
-const UniswapV2Factory = require("../../artifacts/UniswapV2Factory.json")
-const UniswapV2Router = require("../../artifacts/UniswapV2Router.json")
-const Latte = require("../../artifacts/Latte.json")
 
 const { expandDecimals } = require("./utilities")
 
@@ -37,7 +34,7 @@ async function loadFixtures(provider, wallet) {
   const pair = await contractAt("UniswapV2Pair", pairAddress)
 
   const pool = await deployContract("Pool", [latte.address])
-  const market = await deployContract("Market", [weth.address, factory.address])
+  const market = await deployContract("MarketMock", [weth.address, factory.address])
   const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18)])
   const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 5, 2, expandDecimals(20, 18), expandDecimals(15, 18)])
 
