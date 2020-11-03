@@ -6,6 +6,7 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
 import "./interfaces/ILatte.sol";
+import "./interfaces/IPool.sol";
 
 
 contract Latte is IERC20, ILatte {
@@ -53,7 +54,7 @@ contract Latte is IERC20, ILatte {
 
     event Toast(address indexed account, uint256 value);
     event Roast(address indexed sender, address indexed account, uint256 value);
-    event FloorPrice(uint256 eth, uint256 supply);
+    event FloorPrice(uint256 capital, uint256 supply);
 
     constructor(uint256 initialSupply, uint256 _maxSupply) public {
         gov = msg.sender;
@@ -234,7 +235,10 @@ contract Latte is IERC20, ILatte {
         _updateLedger(_account);
 
         emit Transfer(address(0), _account, _amount);
-        emit FloorPrice(pool.balance, totalSupply);
+
+        if (pool != address(0)) {
+            emit FloorPrice(IPool(pool).capital(), totalSupply);
+        }
     }
 
     function _burn(address _account, uint256 _amount, bool updateRegistry) private {
@@ -253,7 +257,10 @@ contract Latte is IERC20, ILatte {
         }
 
         emit Transfer(_account, address(0), _amount);
-        emit FloorPrice(pool.balance, totalSupply);
+
+        if (pool != address(0)) {
+            emit FloorPrice(IPool(pool).capital(), totalSupply);
+        }
     }
 
     function _approve(address _owner, address _spender, uint256 _amount) private {
