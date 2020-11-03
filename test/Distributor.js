@@ -67,7 +67,7 @@ describe("Distributor", function() {
   })
 
   it("mint fails if mint amount is zero", async () => {
-    const distributorMock = await deployContract("Distributor", [latte.address, pool.address, user0.address, user0.address, 1, 5, 20, 10])
+    const distributorMock = await deployContract("Distributor", [latte.address, pool.address, user0.address, user0.address, 1, 5, 20, 10, 10])
     await expect(distributorMock.mint(user0.address, { value: "1" }))
       .to.be.revertedWith("Distributor: mint amount is zero")
   })
@@ -76,6 +76,12 @@ describe("Distributor", function() {
     await distributor.mint(user0.address, { value: "10" })
     await expect(distributor.mint(user0.address, { value: expandDecimals(15, 18) }))
       .to.be.revertedWith("Distributor: cap reached")
+  })
+
+  it("mint fails if individual cap is exceeded", async () => {
+    const distributorMock = await deployContract("Distributor", [latte.address, pool.address, user0.address, user0.address, 1, 5, 20, 10, 1])
+    await expect(distributorMock.mint(user0.address, { value: "2" }))
+      .to.be.revertedWith("Distributor: individual cap exceeded")
   })
 
   it("mints", async () => {

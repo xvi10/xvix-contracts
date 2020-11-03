@@ -4,7 +4,7 @@ async function deployContract(name, args) {
   const contractFactory = await ethers.getContractFactory(name);
   const contract = await contractFactory.deploy(...args);
   console.log(`Deploying ${name} to ${contract.address}...`)
-  contract.deployTransaction.wait()
+  await contract.deployTransaction.wait()
   console.log("... Completed!")
   return contract
 }
@@ -29,7 +29,9 @@ async function main() {
   const factory = await contractAt("UniswapV2Factory", "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f")
   const router = await contractAt("UniswapV2Router", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 
-  await factory.createPair(latte.address, weth.address)
+  const txn = await factory.createPair(latte.address, weth.address)
+  await txn.wait()
+  console.log("Pair created", txn.hash)
   const pairAddress = await factory.getPair(latte.address, weth.address)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
   console.log("Deployed pair to " + pair.address)

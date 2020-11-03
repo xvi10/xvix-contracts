@@ -30,12 +30,15 @@ contract Distributor is ReentrancyGuard {
     uint256 public ethReceived;
     uint256 public ethMaxCap;
     uint256 public ethSoftCap;
+    uint256 public individualCap;
+
+    mapping (address => uint256) public contributions;
 
     bool public active = true;
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _multiplier, uint256 _divisor, uint256 _ethMaxCap, uint256 _ethSoftCap) public {
+    constructor(address _latte, address _pool, address _lp, address _fund, uint256 _multiplier, uint256 _divisor, uint256 _ethMaxCap, uint256 _ethSoftCap, uint256 _individualCap) public {
         latte = _latte;
         pool = _pool;
         lp = _lp;
@@ -44,6 +47,7 @@ contract Distributor is ReentrancyGuard {
         divisor = _divisor;
         ethMaxCap = _ethMaxCap;
         ethSoftCap = _ethSoftCap;
+        individualCap = _individualCap;
         gov = msg.sender;
     }
 
@@ -64,6 +68,12 @@ contract Distributor is ReentrancyGuard {
     }
 
     function mint(address receiver) external payable nonReentrant {
+        ethReceived = ethReceived.add(msg.value);
+        require(ethReceived <= ethSoftCap, "Distributor: cap reached");
+
+        contributions[receiver] = contributions[receiver].add(msg.value);
+        require(contributions[receiver] <= individualCap, "Distributor: individual cap exceeded");
+
         require(active, "Distributor: not active");
         require(msg.value > 0, "Distributor: insufficient value");
 
@@ -86,9 +96,6 @@ contract Distributor is ReentrancyGuard {
         uint256 poolETH = msg.value.sub(lpETH).sub(fundETH);
         (success,) = pool.call{value: poolETH}("");
         require(success, "Distributor: transfer to pool failed");
-
-        ethReceived = ethReceived.add(msg.value);
-        require(ethReceived <= ethSoftCap, "Distributor: cap reached");
 
         emit Mint(receiver, msg.value);
     }
