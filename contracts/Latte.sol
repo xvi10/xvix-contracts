@@ -155,6 +155,24 @@ contract Latte is IERC20, ILatte {
         return true;
     }
 
+    function getBurnTarget(address _account) public view returns (uint256) {
+        uint32 slot = getLatestSlot();
+        Ledger memory ledger = ledgers[_account];
+        uint256 burnt = burnRegistry[_account][slot - 1]; // amount burnt in previous slot
+
+        uint256 balance = 0;
+        if (ledger.slot1 <= slot && ledger.balance1 > 0) {
+            balance = uint256(ledger.balance1);
+        } else if (ledger.slot0 <= slot && ledger.balance0 > 0) {
+            balance = uint256(ledger.balance0);
+        } else {
+            return 0;
+        }
+
+        uint256 burnAmount = _getWeeklyBurnAmount(balance);
+        return burnt > burnAmount ? 0 : burnAmount.sub(burnt);
+    }
+
     function getBurnAllowance(address _account) public view returns (uint256) {
         if (exemptions[_account]) {
             return 0;
