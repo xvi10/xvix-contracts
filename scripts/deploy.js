@@ -39,7 +39,7 @@ async function main() {
   const pool = await deployContract("Pool", [latte.address])
   const market = await deployContract("Market", [weth.address, factory.address])
   const cafe = await deployContract("Cafe", [latte.address, pool.address, cafeMaxSupply])
-  const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 100, 1, expandDecimals(1500, 18), expandDecimals(500, 18)])
+  const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 100, 1, expandDecimals(1500, 18), expandDecimals(500, 18), expandDecimals(10, 18)])
 
   await latte.setCafe(cafe.address)
   await latte.setPool(pool.address)

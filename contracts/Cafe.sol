@@ -29,19 +29,19 @@ contract Cafe is ReentrancyGuard {
         ethReserve = _ethReserve;
     }
 
-    function mint(address receiver) external payable nonReentrant {
+    function mint(address _receiver) external payable nonReentrant {
         require(msg.value > 0, "Cafe: insufficient value");
 
         uint256 toMint = getMintAmount(msg.value);
         require(toMint > 0, "Cafe: mint amount is zero");
 
-        ILatte(latte).mint(receiver, toMint);
+        ILatte(latte).mint(_receiver, toMint);
         ethReserve = ethReserve.add(msg.value);
 
         (bool success,) = pool.call{value: msg.value}("");
         require(success, "Cafe: transfer to pool failed");
 
-        emit Mint(receiver, toMint);
+        emit Mint(_receiver, toMint);
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {

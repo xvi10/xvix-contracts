@@ -93,7 +93,9 @@ describe("Distributor", function() {
     const fundBalance = await provider.getBalance(fund)
     const poolBalance = await provider.getBalance(pool.address)
 
+    expect(await distributor.getRemainingAllocation(user0.address)).eq(expandDecimals(15, 18))
     await distributor.mint(user0.address, { value: expandDecimals(10, 18) })
+    expect(await distributor.getRemainingAllocation(user0.address)).eq(expandDecimals(5, 18))
 
     expect(await latte.balanceOf(user0.address)).eq(expandDecimals(25, 18))
     expect(await latte.balanceOf(lp)).eq(expandDecimals(5, 18)) // 20% of 25

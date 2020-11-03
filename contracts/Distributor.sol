@@ -67,19 +67,23 @@ contract Distributor is ReentrancyGuard {
         fund = _fund;
     }
 
-    function mint(address receiver) external payable nonReentrant {
+    function getRemainingAllocation(address _account) public view returns (uint256) {
+        return individualCap.sub(contributions[_account]);
+    }
+
+    function mint(address _receiver) external payable nonReentrant {
         ethReceived = ethReceived.add(msg.value);
         require(ethReceived <= ethSoftCap, "Distributor: cap reached");
 
-        contributions[receiver] = contributions[receiver].add(msg.value);
-        require(contributions[receiver] <= individualCap, "Distributor: individual cap exceeded");
+        contributions[_receiver] = contributions[_receiver].add(msg.value);
+        require(contributions[_receiver] <= individualCap, "Distributor: individual cap exceeded");
 
         require(active, "Distributor: not active");
         require(msg.value > 0, "Distributor: insufficient value");
 
         uint256 receiverTokens = getMintAmount(msg.value);
         require(receiverTokens > 0, "Distributor: mint amount is zero");
-        ILatte(latte).mint(receiver, receiverTokens);
+        ILatte(latte).mint(_receiver, receiverTokens);
 
         uint256 lpTokens = receiverTokens.mul(LP_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         ILatte(latte).mint(lp, lpTokens);
@@ -97,7 +101,7 @@ contract Distributor is ReentrancyGuard {
         (success,) = pool.call{value: poolETH}("");
         require(success, "Distributor: transfer to pool failed");
 
-        emit Mint(receiver, msg.value);
+        emit Mint(_receiver, msg.value);
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
