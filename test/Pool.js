@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
-const { expandDecimals } = require("./shared/utilities")
+const { expandDecimals, increaseTime, mineBlock } = require("./shared/utilities")
 const { getLatestSlot, expectLedger } = require("./shared/latte")
 
 use(solidity)
@@ -51,6 +51,11 @@ describe("Pool", function() {
     const slot = await getLatestSlot(provider)
     await expectLedger(latte, user0.address, 0, 0, slot, transferAmount)
 
+    await increaseTime(provider, 8 * 24 * 60 * 60)
+    await mineBlock(provider)
+
+    const newSlot = await getLatestSlot(provider)
+
     const burnAmount = expandDecimals(10, 18)
     expect(await cafe.tokenReserve()).eq(expandDecimals(1001, 18))
     expect(await pool.capital()).eq("0")
@@ -72,9 +77,13 @@ describe("Pool", function() {
     await expectLedger(latte, user0.address, 0, 0, slot, transferAmount)
     await expectLedger(latte, user1.address, 0, 0, 0, 0)
 
+    expect(await latte.getBurnAllowance(user0.address)).eq(expandDecimals(3, 18))
+    expect(await latte.getBurnAllowance(user1.address)).eq("0")
     await pool.connect(user0).refund(user1.address, burnAmount)
+    expect(await latte.getBurnAllowance(user0.address)).eq(expandDecimals(3, 18))
+    expect(await latte.getBurnAllowance(user1.address)).eq("0")
 
-    await expectLedger(latte, user0.address, 0, 0, slot, transferAmount.sub(burnAmount))
+    await expectLedger(latte, user0.address, slot, transferAmount, newSlot, transferAmount.sub(burnAmount))
     await expectLedger(latte, user1.address, 0, 0, 0, 0)
 
     const ethReceived = (await provider.getBalance(user1.address)).sub(userBalance1)

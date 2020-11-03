@@ -53,6 +53,7 @@ contract Latte is IERC20, ILatte {
 
     event Toast(address indexed account, uint256 value);
     event Roast(address indexed sender, address indexed account, uint256 value);
+    event FloorPrice(uint256 eth, uint256 supply);
 
     constructor(uint256 initialSupply, uint256 _maxSupply) public {
         gov = msg.sender;
@@ -131,12 +132,12 @@ contract Latte is IERC20, ILatte {
 
     function burn(address _account, uint256 _amount) external override returns (bool) {
         require(msg.sender == pool, "Latte: forbidden");
-        _burn(_account, _amount);
+        _burn(_account, _amount, false);
         return true;
     }
 
     function toast(uint256 _amount) external returns (bool) {
-        _burn(msg.sender, _amount);
+        _burn(msg.sender, _amount, true);
         emit Toast(msg.sender, _amount);
         return true;
     }
@@ -146,7 +147,7 @@ contract Latte is IERC20, ILatte {
         require(toBurn > 0, "Latte: burn amount is zero");
 
         uint256 fee = toBurn.mul(FEE_MULTIPLIER).div(FEE_DIVISOR);
-        _burn(_account, toBurn.add(fee));
+        _burn(_account, toBurn.add(fee), true);
         _mint(_feeTo, fee);
 
         emit Roast(msg.sender, _account, toBurn);
@@ -192,7 +193,7 @@ contract Latte is IERC20, ILatte {
         _updateLedger(_recipient);
 
         if (!exemptions[msg.sender]) {
-            _burn(_sender, _getTransferBurnAmount(_amount));
+            _burn(_sender, _getTransferBurnAmount(_amount), true);
         }
     }
 
@@ -233,9 +234,10 @@ contract Latte is IERC20, ILatte {
         _updateLedger(_account);
 
         emit Transfer(address(0), _account, _amount);
+        emit FloorPrice(pool.balance, totalSupply);
     }
 
-    function _burn(address _account, uint256 _amount) private {
+    function _burn(address _account, uint256 _amount, bool updateRegistry) private {
         require(_account != address(0), "Latte: burn from the zero address");
         if (_amount == 0) {
             return;
@@ -245,10 +247,13 @@ contract Latte is IERC20, ILatte {
         totalSupply = totalSupply.sub(_amount);
         _updateLedger(_account);
 
-        uint256 slot = getLatestSlot() - 1;
-        burnRegistry[_account][slot] = burnRegistry[_account][slot].add(_amount);
+        if (updateRegistry) {
+            uint256 slot = getLatestSlot() - 1;
+            burnRegistry[_account][slot] = burnRegistry[_account][slot].add(_amount);
+        }
 
         emit Transfer(_account, address(0), _amount);
+        emit FloorPrice(pool.balance, totalSupply);
     }
 
     function _approve(address _owner, address _spender, uint256 _amount) private {

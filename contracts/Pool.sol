@@ -17,6 +17,7 @@ contract Pool is IPool, ReentrancyGuard {
     uint256 public override capital;
 
     event Refund(address indexed to, uint256 refundAmount, uint256 burnAmount);
+    event FloorPrice(uint256 eth, uint256 supply);
 
     constructor(address _latte) public {
         latte = _latte;
@@ -37,6 +38,7 @@ contract Pool is IPool, ReentrancyGuard {
         require(success, "Pool: transfer to reciever failed");
 
         emit Refund(_receiver, refundAmount, _burnAmount);
+        emit FloorPrice(address(this).balance, IERC20(latte).totalSupply());
     }
 
     function getMintAmount(uint256 _ethAmount) external override view returns (uint256) {
