@@ -1,18 +1,5 @@
 const { expandDecimals } = require("../test/shared/utilities")
-
-async function deployContract(name, args) {
-  const contractFactory = await ethers.getContractFactory(name);
-  const contract = await contractFactory.deploy(...args);
-  console.log(`Deploying ${name} to ${contract.address}...`)
-  await contract.deployTransaction.wait()
-  console.log("... Completed!")
-  return contract
-}
-
-async function contractAt(name, address) {
-  const contractFactory = await ethers.getContractFactory(name);
-  return await contractFactory.attach(address);
-}
+const { deployContract, contractAt } = require("./helpers")
 
 async function main() {
   const lp = "0x28dC5a6e99d4e46B8862237d41BA894Bf411Bf66"
