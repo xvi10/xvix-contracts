@@ -43,15 +43,21 @@ contract Distributor is ReentrancyGuard {
     uint256 public latteReceived;
     uint256 public ethLiquidity;
     uint256 public daiLiquidity;
-    uint256 public ethReserve; // for cafe initialization
 
-    mapping (address => uint256) public accountShares;
-    uint256 public totalShares;
+    mapping (address => uint256) public sharesETH;
+    mapping (address => uint256) public sharesDAI;
+
+    uint256 public ethLpLATTE;
+    uint256 public daiLpLATTE;
+
+    uint256 public lpTotalETH;
+    uint256 public lpTotalDAI;
 
     bool public hasActiveLGE = true;
 
     event Lock(address indexed to, uint256 value);
     event WithdrawETH(address indexed to, uint256 value);
+    event WithdrawDAI(address indexed to, uint256 value);
 
     constructor(
         address[] memory _addresses,
@@ -89,9 +95,12 @@ contract Distributor is ReentrancyGuard {
         }
         hasActiveLGE = false;
 
-        ICafe(cafe).enableMint(ethReserve);
+        ICafe(cafe).enableMint(lpTotalETH);
 
-        latteReceived = IERC20(latte).balanceOf(address(this));
+        uint256 latteBalance = IERC20(latte).balanceOf(address(this));
+        ethLpLATTE = latteBalance.div(2);
+        daiLpLATTE = latteBalance.sub(ethLpLATTE);
+
         _addLiquidityETH(_deadline);
         _addLiquidityDAI(_deadline);
     }
@@ -105,8 +114,8 @@ contract Distributor is ReentrancyGuard {
     ) external nonReentrant {
         require(!hasActiveLGE, "Distributor: LGE has not ended");
 
-        accountShares[msg.sender] = accountShares[msg.sender].sub(_shares);
-        uint256 liquidity = ethLiquidity.mul(_shares).div(totalShares);
+        sharesETH[msg.sender] = sharesETH[msg.sender].sub(_shares);
+        uint256 liquidity = ethLiquidity.mul(_shares).div(lpTotalETH);
 
         (uint256 amountLATTE, uint256 amountETH) = IMarket(market).removeLiquidityETH(
             latte,
@@ -130,17 +139,43 @@ contract Distributor is ReentrancyGuard {
         emit WithdrawETH(_to, _shares);
     }
 
-    /* function removeLiquidityDAI() external nonReentrant {
+    function removeLiquidityDAI(
+        uint256 _shares,
+        uint256 _amountLATTEMin,
+        uint256 _amountDAIMin,
+        address _to,
+        uint256 _deadline
+    ) external nonReentrant {
         require(!hasActiveLGE, "Distributor: LGE has not ended");
 
-    } */
+        sharesDAI[msg.sender] = sharesDAI[msg.sender].sub(_shares);
+        uint256 liquidity = daiLiquidity.mul(_shares).div(lpTotalDAI);
+
+        (uint256 amountLATTE, uint256 amountDAI) = IMarket(market).removeLiquidity(
+            latte,
+            dai,
+            liquidity,
+            _amountLATTEMin,
+            _amountDAIMin,
+            address(this),
+            _deadline
+        );
+
+        IERC20(dai).transfer(_to, amountDAI);
+
+        uint256 refundBasisPoints = getRefundBasisPoints();
+        uint256 refundAmount = amountLATTE.mul(refundBasisPoints).div(BASIS_POINTS_DIVISOR);
+        uint256 lockAmount = amountLATTE.sub(refundAmount);
+
+        ILatte(latte).lock(lockAmount);
+        IPool(pool).refund(_to, refundAmount);
+
+        emit WithdrawDAI(_to, _shares);
+    }
 
     function lock(uint256 _minDAI, uint256 _deadline) external payable nonReentrant {
         require(hasActiveLGE, "Distributor: LGE has ended");
         require(msg.value > 0, "Distributor: insufficient value");
-
-        totalShares = totalShares.add(msg.value);
-        accountShares[msg.sender] = accountShares[msg.sender].add(msg.value);
 
         uint256 remainingETH = msg.value;
         if (fundReceived >= fundMax) {
@@ -158,14 +193,20 @@ contract Distributor is ReentrancyGuard {
         uint256 ethLpETH = remainingETH.mul(LP_ETH_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
         uint256 daiLpETH = remainingETH.mul(LP_DAI_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
 
-        IUniswapV2Router(router).swapExactETHForTokens{value: daiLpETH}(
+        uint256[] memory amounts = IUniswapV2Router(router).swapExactETHForTokens{value: daiLpETH}(
             _minDAI,
             path,
             address(this),
             _deadline
         );
 
-        ethReserve = ethReserve.add(ethLpETH);
+        uint256 daiLpDAI = amounts[amounts.length - 1];
+
+        sharesETH[msg.sender] = sharesETH[msg.sender].add(ethLpETH);
+        sharesDAI[msg.sender] = sharesETH[msg.sender].add(daiLpDAI);
+
+        lpTotalETH = lpTotalETH.add(ethLpETH);
+        lpTotalDAI = lpTotalDAI.add(daiLpDAI);
 
         emit Lock(msg.sender, msg.value);
     }
@@ -176,8 +217,8 @@ contract Distributor is ReentrancyGuard {
         uint256 latteBalance = IERC20(latte).balanceOf(pair);
         // n represents the percentage, in basis points, that latte has risen
         // relative to eth
-        uint256 a = totalShares.mul(latteBalance).mul(BASIS_POINTS_DIVISOR);
-        uint256 b = latteReceived.mul(wethBalance);
+        uint256 a = lpTotalETH.mul(latteBalance).mul(BASIS_POINTS_DIVISOR);
+        uint256 b = latteReceived.div(2).mul(wethBalance);
         uint256 n = a.div(b);
         if (n >= MIN_RETURNS_BASIS_POINTS) {
             return 0;
