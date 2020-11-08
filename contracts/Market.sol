@@ -7,11 +7,12 @@ import "./uniswap/UniswapV2Library.sol";
 import "./uniswap/TransferHelper.sol";
 
 import "./interfaces/IWETH.sol";
+import "./interfaces/IMarket.sol";
 import "./interfaces/IUniswapV2Factory.sol";
 import "./interfaces/IUniswapV2ERC20.sol";
 
 
-contract Market {
+contract Market is IMarket {
     using SafeMath for uint256;
 
     address public immutable WETH;
@@ -65,7 +66,7 @@ contract Market {
         uint amountBMin,
         address to,
         uint deadline
-    ) external virtual ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
+    ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
@@ -80,7 +81,7 @@ contract Market {
         uint amountETHMin,
         address to,
         uint deadline
-    ) external virtual payable ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
+    ) external virtual override payable ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
         (amountToken, amountETH) = _addLiquidity(
             token,
             WETH,
@@ -107,7 +108,7 @@ contract Market {
         uint amountBMin,
         address to,
         uint deadline
-    ) public virtual ensure(deadline) returns (uint amountA, uint amountB) {
+    ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         IUniswapV2ERC20(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
         (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
@@ -124,7 +125,7 @@ contract Market {
         uint amountETHMin,
         address to,
         uint deadline
-    ) public virtual ensure(deadline) returns (uint amountToken, uint amountETH) {
+    ) public virtual override ensure(deadline) returns (uint amountToken, uint amountETH) {
         (amountToken, amountETH) = removeLiquidity(
             token,
             WETH,

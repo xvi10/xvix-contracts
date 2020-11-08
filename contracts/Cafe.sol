@@ -6,11 +6,13 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 import "./libraries/utils/ReentrancyGuard.sol";
 
+import "./interfaces/ICafe.sol";
 import "./interfaces/ILatte.sol";
 import "./interfaces/IPool.sol";
+import "./interfaces/IDistributor.sol";
 
 
-contract Cafe is ReentrancyGuard {
+contract Cafe is ICafe, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant REDUCTION_BASIS_POINTS = 1000; // 10%
@@ -18,18 +20,26 @@ contract Cafe is ReentrancyGuard {
 
     address public immutable latte;
     address public immutable pool;
+    address public immutable distributor;
 
     uint256 public ethReserve;
+    bool public active = false;
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _latte, address _pool, uint256 _ethReserve) public {
+    constructor(address _latte, address _pool, address _distributor) public {
         latte = _latte;
         pool = _pool;
+        distributor = _distributor;
+    }
+
+    function enableMint(uint256 _ethReserve) external override nonReentrant {
+        require(msg.sender == distributor, "Cafe: forbidden");
         ethReserve = _ethReserve;
     }
 
     function mint(address _receiver) external payable nonReentrant {
+        require(active, "Cafe: not active");
         require(msg.value > 0, "Cafe: insufficient value");
 
         uint256 toMint = getMintAmount(msg.value);
@@ -65,7 +75,8 @@ contract Cafe is ReentrancyGuard {
 
     function tokenReserve() public view returns (uint256) {
         uint256 maxSupply = ILatte(latte).maxSupply();
+        uint256 lockedSupply = ILatte(latte).lockedSupply();
         uint256 totalSupply = IERC20(latte).totalSupply();
-        return maxSupply.sub(totalSupply);
+        return maxSupply.sub(lockedSupply).sub(totalSupply);
     }
 }

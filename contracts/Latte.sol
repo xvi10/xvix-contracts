@@ -43,6 +43,7 @@ contract Latte is IERC20, ILatte {
     mapping (address => mapping (address => uint256)) public allowances;
 
     uint256 public override totalSupply;
+    uint256 public override lockedSupply;
     uint256 public override maxSupply;
 
     mapping (address => bool) public exemptions;
@@ -126,7 +127,7 @@ contract Latte is IERC20, ILatte {
     }
 
     function mint(address _account, uint256 _amount) external override returns (bool) {
-        require(msg.sender == cafe || msg.sender == distributor, "Latte: forbidden");
+        require(msg.sender == cafe, "Latte: forbidden");
         _mint(_account, _amount);
         return true;
     }
@@ -134,6 +135,13 @@ contract Latte is IERC20, ILatte {
     function burn(address _account, uint256 _amount) external override returns (bool) {
         require(msg.sender == pool, "Latte: forbidden");
         _burn(_account, _amount, false);
+        return true;
+    }
+
+    function lock(uint256 _amount) external override returns (bool) {
+        require(msg.sender == distributor, "Latte: forbidden");
+        _burn(msg.sender, _amount, false);
+        lockedSupply = lockedSupply.add(_amount);
         return true;
     }
 

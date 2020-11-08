@@ -27,7 +27,7 @@ contract Pool is IPool, ReentrancyGuard {
         capital = capital.add(msg.value);
     }
 
-    function refund(address _receiver, uint256 _burnAmount) external nonReentrant {
+    function refund(address _receiver, uint256 _burnAmount) external override nonReentrant returns (uint256) {
         uint256 refundAmount = getRefundAmount(_burnAmount);
         require(refundAmount > 0, "Pool: refund amount is zero");
         capital = capital.sub(refundAmount);
@@ -39,6 +39,8 @@ contract Pool is IPool, ReentrancyGuard {
 
         emit Refund(_receiver, refundAmount, _burnAmount);
         emit FloorPrice(capital, IERC20(latte).totalSupply());
+
+        return refundAmount;
     }
 
     function getMintAmount(uint256 _ethAmount) external override view returns (uint256) {
