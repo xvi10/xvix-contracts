@@ -6,21 +6,21 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 import "./libraries/utils/ReentrancyGuard.sol";
 
-import "./interfaces/IPool.sol";
-import "./interfaces/ILatte.sol";
+import "./interfaces/IFloor.sol";
+import "./interfaces/IXVIX.sol";
 
 
-contract Pool is IPool, ReentrancyGuard {
+contract Floor is IFloor, ReentrancyGuard {
     using SafeMath for uint256;
 
-    address public immutable latte;
+    address public immutable xvix;
     uint256 public override capital;
 
     event Refund(address indexed to, uint256 refundAmount, uint256 burnAmount);
     event FloorPrice(uint256 capital, uint256 supply);
 
-    constructor(address _latte) public {
-        latte = _latte;
+    constructor(address _xvix) public {
+        xvix = _xvix;
     }
 
     receive() external payable nonReentrant {
@@ -29,16 +29,16 @@ contract Pool is IPool, ReentrancyGuard {
 
     function refund(address _receiver, uint256 _burnAmount) external override nonReentrant returns (uint256) {
         uint256 refundAmount = getRefundAmount(_burnAmount);
-        require(refundAmount > 0, "Pool: refund amount is zero");
+        require(refundAmount > 0, "Floor: refund amount is zero");
         capital = capital.sub(refundAmount);
 
-        ILatte(latte).burn(msg.sender, _burnAmount);
+        IXVIX(xvix).burn(msg.sender, _burnAmount);
 
         (bool success,) = _receiver.call{value: refundAmount}("");
-        require(success, "Pool: transfer to reciever failed");
+        require(success, "Floor: transfer to reciever failed");
 
         emit Refund(_receiver, refundAmount, _burnAmount);
-        emit FloorPrice(capital, IERC20(latte).totalSupply());
+        emit FloorPrice(capital, IERC20(xvix).totalSupply());
 
         return refundAmount;
     }
@@ -47,12 +47,12 @@ contract Pool is IPool, ReentrancyGuard {
         if (capital == 0) {
             return 0;
         }
-        uint256 totalSupply = IERC20(latte).totalSupply();
+        uint256 totalSupply = IERC20(xvix).totalSupply();
         return _ethAmount.mul(totalSupply).div(capital);
     }
 
     function getRefundAmount(uint256 _tokenAmount) public view returns (uint256) {
-        uint256 totalSupply = IERC20(latte).totalSupply();
+        uint256 totalSupply = IERC20(xvix).totalSupply();
         return capital.mul(_tokenAmount).div(totalSupply);
     }
 }

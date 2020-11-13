@@ -5,11 +5,11 @@ pragma solidity 0.6.12;
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 
-import "./interfaces/ILatte.sol";
-import "./interfaces/IPool.sol";
+import "./interfaces/IXVIX.sol";
+import "./interfaces/IFloor.sol";
 
 
-contract Latte is IERC20, ILatte {
+contract XVIX is IERC20, IXVIX {
     using SafeMath for uint256;
 
     struct Ledger {
@@ -28,22 +28,20 @@ contract Latte is IERC20, ILatte {
 
     uint256 public constant BURN_INTERVAl = 7 days;
 
-    string public constant name = "Latte";
-    string public constant symbol = "LATTE";
+    string public constant name = "XVIX";
+    string public constant symbol = "XVIX";
     uint8 public constant decimals = 18;
 
-    string public website = "https://lattefi.com";
+    string public website = "https://xvix.finance/";
 
     address public gov;
-    address public cafe;
-    address public pool;
-    address public distributor;
+    address public minter;
+    address public floor;
 
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
 
     uint256 public override totalSupply;
-    uint256 public override lockedSupply;
     uint256 public override maxSupply;
 
     mapping (address => bool) public exemptions;
@@ -82,66 +80,53 @@ contract Latte is IERC20, ILatte {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) public override returns (bool) {
-        _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "Latte: transfer amount exceeds allowance"));
+        _approve(_sender, msg.sender, allowances[_sender][msg.sender].sub(_amount, "XVIX: transfer amount exceeds allowance"));
         _transfer(_sender, _recipient, _amount);
 
         return true;
     }
 
     function setGov(address _gov) external {
-        require(msg.sender == gov, "Latte: forbidden");
+        require(msg.sender == gov, "XVIX: forbidden");
         gov = _gov;
     }
 
     function setWebsite(string memory _website) external {
-        require(msg.sender == gov, "Latte: forbidden");
+        require(msg.sender == gov, "XVIX: forbidden");
         website = _website;
     }
 
-    function setCafe(address _cafe) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        require(cafe == address(0), "Latte: cafe already set");
-        cafe = _cafe;
+    function setMinter(address _minter) external {
+        require(msg.sender == gov, "XVIX: forbidden");
+        require(minter == address(0), "XVIX: minter already set");
+        minter = _minter;
     }
 
-    function setPool(address _pool) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        require(pool == address(0), "Latte: pool already set");
-        pool = _pool;
-    }
-
-    function setDistributor(address _distributor) external {
-        require(msg.sender == gov, "Latte: forbidden");
-        require(distributor == address(0), "Latte: distributor already set");
-        distributor = _distributor;
+    function setFloor(address _floor) external {
+        require(msg.sender == gov, "XVIX: forbidden");
+        require(floor == address(0), "XVIX: floor already set");
+        floor = _floor;
     }
 
     function addExemption(address _account) external {
-        require(msg.sender == gov, "Latte: forbidden");
+        require(msg.sender == gov, "XVIX: forbidden");
         exemptions[_account] = true;
     }
 
     function removeExemption(address _account) external {
-        require(msg.sender == gov, "Latte: forbidden");
+        require(msg.sender == gov, "XVIX: forbidden");
         exemptions[_account] = false;
     }
 
     function mint(address _account, uint256 _amount) external override returns (bool) {
-        require(msg.sender == cafe, "Latte: forbidden");
+        require(msg.sender == minter, "XVIX: forbidden");
         _mint(_account, _amount);
         return true;
     }
 
     function burn(address _account, uint256 _amount) external override returns (bool) {
-        require(msg.sender == pool, "Latte: forbidden");
+        require(msg.sender == floor, "XVIX: forbidden");
         _burn(_account, _amount, false);
-        return true;
-    }
-
-    function lock(uint256 _amount) external override returns (bool) {
-        require(msg.sender == distributor, "Latte: forbidden");
-        _burn(msg.sender, _amount, false);
-        lockedSupply = lockedSupply.add(_amount);
         return true;
     }
 
@@ -153,7 +138,7 @@ contract Latte is IERC20, ILatte {
 
     function roast(address _account, address _feeTo) external returns (bool) {
         uint256 toBurn = getBurnAllowance(_account);
-        require(toBurn > 0, "Latte: burn amount is zero");
+        require(toBurn > 0, "XVIX: burn amount is zero");
 
         uint256 fee = toBurn.mul(FEE_MULTIPLIER).div(FEE_DIVISOR);
         _burn(_account, toBurn.add(fee), true);
@@ -209,10 +194,10 @@ contract Latte is IERC20, ILatte {
     }
 
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
-        require(_sender != address(0), "Latte: transfer from the zero address");
-        require(_recipient != address(0), "Latte: transfer to the zero address");
+        require(_sender != address(0), "XVIX: transfer from the zero address");
+        require(_recipient != address(0), "XVIX: transfer to the zero address");
 
-        balances[_sender] = balances[_sender].sub(_amount, "Latte: transfer amount exceeds balance");
+        balances[_sender] = balances[_sender].sub(_amount, "XVIX: transfer amount exceeds balance");
         balances[_recipient] = balances[_recipient].add(_amount);
         emit Transfer(_sender, _recipient, _amount);
 
@@ -234,7 +219,7 @@ contract Latte is IERC20, ILatte {
 
     function _updateLedger(address _account) private {
         uint256 balance = balances[_account];
-        require(balance < uint256(uint96(-1)), "Latte: balance is too large");
+        require(balance < uint256(uint96(-1)), "XVIX: balance is too large");
 
         uint32 slot = getLatestSlot();
 
@@ -249,31 +234,31 @@ contract Latte is IERC20, ILatte {
     }
 
     function _mint(address _account, uint256 _amount) private {
-        require(_account != address(0), "Latte: mint to the zero address");
+        require(_account != address(0), "XVIX: mint to the zero address");
         if (_amount == 0) {
             return;
         }
 
         totalSupply = totalSupply.add(_amount);
-        require(totalSupply <= maxSupply, "Latte: max supply exceeded");
+        require(totalSupply <= maxSupply, "XVIX: max supply exceeded");
 
         balances[_account] = balances[_account].add(_amount);
         _updateLedger(_account);
 
         emit Transfer(address(0), _account, _amount);
 
-        if (pool != address(0)) {
-            emit FloorPrice(IPool(pool).capital(), totalSupply);
+        if (floor != address(0)) {
+            emit FloorPrice(IFloor(floor).capital(), totalSupply);
         }
     }
 
     function _burn(address _account, uint256 _amount, bool updateRegistry) private {
-        require(_account != address(0), "Latte: burn from the zero address");
+        require(_account != address(0), "XVIX: burn from the zero address");
         if (_amount == 0) {
             return;
         }
 
-        balances[_account] = balances[_account].sub(_amount, "Latte: burn amount exceeds balance");
+        balances[_account] = balances[_account].sub(_amount, "XVIX: burn amount exceeds balance");
         totalSupply = totalSupply.sub(_amount);
         _updateLedger(_account);
 
@@ -284,14 +269,14 @@ contract Latte is IERC20, ILatte {
 
         emit Transfer(_account, address(0), _amount);
 
-        if (pool != address(0)) {
-            emit FloorPrice(IPool(pool).capital(), totalSupply);
+        if (floor != address(0)) {
+            emit FloorPrice(IFloor(floor).capital(), totalSupply);
         }
     }
 
     function _approve(address _owner, address _spender, uint256 _amount) private {
-        require(_owner != address(0), "Latte: approve from the zero address");
-        require(_spender != address(0), "Latte: approve to the zero address");
+        require(_owner != address(0), "XVIX: approve from the zero address");
+        require(_spender != address(0), "XVIX: approve to the zero address");
 
         allowances[_owner][_spender] = _amount;
         emit Approval(_owner, _spender, _amount);

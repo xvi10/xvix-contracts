@@ -23,29 +23,27 @@ async function loadFixtures(provider, wallet) {
 
   const initialSupply = expandDecimals(1000, 18)
   const maxSupply = expandDecimals(2000, 18)
-  const latte = await deployContract("Latte", [initialSupply, maxSupply])
+  const xvix = await deployContract("XVIX", [initialSupply, maxSupply])
   const weth = await deployContract("WETH", [])
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
   const router = await deployContract("UniswapV2Router", [factory.address, weth.address], { gasLimit: 6000000 })
 
-  await factory.createPair(latte.address, weth.address)
-  const pairAddress = await factory.getPair(latte.address, weth.address)
+  await factory.createPair(xvix.address, weth.address)
+  const pairAddress = await factory.getPair(xvix.address, weth.address)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
 
-  const pool = await deployContract("Pool", [latte.address])
+  const floor = await deployContract("Floor", [xvix.address])
   const market = await deployContract("MarketMock", [weth.address, factory.address])
-  const cafe = await deployContract("Cafe", [latte.address, pool.address, expandDecimals(400, 18)])
-  const distributor = await deployContract("Distributor", [latte.address, pool.address, lp, fund, 5, 2, expandDecimals(20, 18), expandDecimals(15, 18), expandDecimals(15, 18)])
+  const minter = await deployContract("Minter", [xvix.address, floor.address, expandDecimals(400, 18)])
 
-  await latte.setCafe(cafe.address)
-  await latte.setPool(pool.address)
-  await latte.setDistributor(distributor.address)
+  await xvix.setMinter(minter.address)
+  await xvix.setFloor(floor.address)
 
-  await latte.addExemption(pair.address)
-  await latte.addExemption(market.address)
+  await xvix.addExemption(pair.address)
+  await xvix.addExemption(market.address)
 
-  return { latte, weth, router, pair, pool, market, cafe, distributor, lp, fund }
+  return { xvix, weth, router, pair, floor, market, minter, lp, fund }
 }
 
 module.exports = {
