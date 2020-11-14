@@ -14,23 +14,36 @@ import "./interfaces/IFloor.sol";
 contract Minter is IMinter, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant REDUCTION_BASIS_POINTS = 1000; // 10%
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
     address public immutable xvix;
     address public immutable floor;
+    address public immutable distributor;
 
     uint256 public ethReserve;
+    bool public active = false;
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _xvix, address _floor, uint256 _ethReserve) public {
+    constructor(address _xvix, address _floor, address _distributor, uint256 _ethReserve) public {
         xvix = _xvix;
         floor = _floor;
+        distributor = _distributor;
+        ethReserve = _ethReserve;
+    }
+
+    function enableMint(uint256 _ethReserve) external override nonReentrant {
+        require(!active, "Minter: already active");
+        require(_ethReserve != 0, "Minter: insufficient eth reserve");
+        require(msg.sender == distributor, "Minter: forbidden");
+
+        active = true;
         ethReserve = _ethReserve;
     }
 
     function mint(address _receiver) external payable nonReentrant {
+        require(active, "Minter: not active");
+        require(ethReserve > 0, "Minter: insufficient eth reserve");
         require(msg.value > 0, "Minter: insufficient value");
 
         uint256 toMint = getMintAmount(msg.value);
@@ -56,10 +69,7 @@ contract Minter is IMinter, ReentrancyGuard {
 
         // the maximum tokens that can be minted is capped by the price floor of the floor
         // this ensures that minting tokens will never reduce the price floor
-        // the maximum tokens is also further reduced so that the price floor will increase
-        uint256 floorMax = IFloor(floor).getMintAmount(_ethAmount);
-        uint256 reduction = floorMax.mul(REDUCTION_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        uint256 max = floorMax.sub(reduction);
+        uint256 max = IFloor(floor).getMaxMintAmount(_ethAmount);
 
         return mintable < max ? mintable : max;
     }

@@ -4,13 +4,12 @@ pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
-import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IXVIX.sol";
 import "./interfaces/IFloor.sol";
 
 
-contract XVIX is IERC20, IXVIX, ReentrancyGuard {
+contract XVIX is IERC20, IXVIX {
     using SafeMath for uint256;
 
     struct TransferConfig {
@@ -74,6 +73,7 @@ contract XVIX is IERC20, IXVIX, ReentrancyGuard {
 
     event Toast(address indexed account, uint256 value);
     event FloorPrice(uint256 capital, uint256 supply);
+    event Rebase(uint256 normalDivisor);
 
     modifier onlyGov() {
         require(msg.sender == gov, "XVIX: forbidden");
@@ -192,6 +192,7 @@ contract XVIX is IERC20, IXVIX, ReentrancyGuard {
         }
 
         normalDivisor = nextDivisor;
+        emit Rebase(normalDivisor);
     }
 
     function setGov(address _gov) public onlyGov {
@@ -244,6 +245,7 @@ contract XVIX is IERC20, IXVIX, ReentrancyGuard {
 
     function transfer(address _recipient, uint256 _amount) public override returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
+        rebase();
         return true;
     }
 
@@ -260,7 +262,7 @@ contract XVIX is IERC20, IXVIX, ReentrancyGuard {
         uint256 nextAllowance = allowances[_sender][msg.sender].sub(_amount, "XVIX: transfer amount exceeds allowance");
         _approve(_sender, msg.sender, nextAllowance);
         _transfer(_sender, _recipient, _amount);
-
+        rebase();
         return true;
     }
 

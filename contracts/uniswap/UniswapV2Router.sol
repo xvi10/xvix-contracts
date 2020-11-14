@@ -71,7 +71,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint amountBMin,
         address to,
         uint deadline
-    ) external virtual ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
+    ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2LibraryMock.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
@@ -85,7 +85,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint amountETHMin,
         address to,
         uint deadline
-    ) external virtual payable ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
+    ) external virtual override payable ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
         (amountToken, amountETH) = _addLiquidity(
             token,
             WETH,
@@ -112,7 +112,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint amountBMin,
         address to,
         uint deadline
-    ) public virtual ensure(deadline) returns (uint amountA, uint amountB) {
+    ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
         address pair = UniswapV2LibraryMock.pairFor(factory, tokenA, tokenB);
         IUniswapV2ERC20(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
         (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
@@ -128,7 +128,7 @@ contract UniswapV2Router is IUniswapV2Router {
         uint amountETHMin,
         address to,
         uint deadline
-    ) public virtual ensure(deadline) returns (uint amountToken, uint amountETH) {
+    ) public virtual override ensure(deadline) returns (uint amountToken, uint amountETH) {
         (amountToken, amountETH) = removeLiquidity(
             token,
             WETH,
