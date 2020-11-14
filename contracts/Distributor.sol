@@ -8,6 +8,7 @@ import "./libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/ILGEToken.sol";
 import "./interfaces/IWETH.sol";
+import "./interfaces/IXVIX.sol";
 import "./interfaces/IFloor.sol";
 import "./interfaces/IMinter.sol";
 import "./interfaces/IUniswapV2Router.sol";
@@ -168,6 +169,10 @@ contract Distributor is ReentrancyGuard {
         uint256 refundAmount = amountXVIX.mul(refundBasisPoints).div(BASIS_POINTS_DIVISOR);
 
         IFloor(floor).refund(_to, refundAmount);
+
+        uint256 lockAmount = amountXVIX.sub(refundAmount);
+        IXVIX(xvix).lock(lockAmount);
+
         emit RemoveLiquidity(_to, _lgeToken, _lgeTokenAmount);
 
         return amountToken;

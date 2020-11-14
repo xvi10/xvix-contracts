@@ -22,7 +22,7 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
-    uint256 public constant MAX_FUND_BASIS_POINTS = 7; // 0.07%
+    uint256 public constant MAX_FUND_BASIS_POINTS = 20; // 0.2%
     uint256 public constant MAX_BURN_BASIS_POINTS = 500; // 5%
 
     uint256 public constant MIN_REBASE_INTERVAL = 30 minutes;
@@ -47,6 +47,7 @@ contract XVIX is IERC20, IXVIX {
     address public gov;
     address public minter;
     address public floor;
+    address public distributor;
     address public fund;
 
     uint256 public normalSupply;
@@ -72,6 +73,7 @@ contract XVIX is IERC20, IXVIX {
     mapping (address => bool) public safes;
 
     event Toast(address indexed account, uint256 value);
+    event Lock(address indexed account, uint256 value, uint256 maxSupply);
     event FloorPrice(uint256 capital, uint256 supply);
     event Rebase(uint256 normalDivisor);
 
@@ -213,6 +215,11 @@ contract XVIX is IERC20, IXVIX {
         floor = _floor;
     }
 
+    function setDistributor(address _distributor) public onlyGov {
+        require(distributor == address(0), "XVIX: distributor already set");
+        distributor = _distributor;
+    }
+
     function setFund(address _fund) public onlyGov {
         fund = _fund;
     }
@@ -220,6 +227,18 @@ contract XVIX is IERC20, IXVIX {
     function mint(address _account, uint256 _amount) public override returns (bool) {
         require(msg.sender == minter, "XVIX: forbidden");
         _mint(_account, _amount);
+        return true;
+    }
+
+    // permanently remove tokens from circulation by reducing maxSupply
+    function lock(uint256 _amount) public override returns (bool) {
+        require(msg.sender == distributor, "XVIX: forbidden");
+        if (_amount == 0) { return false; }
+
+        _burn(msg.sender, _amount);
+        maxSupply = maxSupply.sub(_amount);
+        emit Lock(msg.sender, _amount, maxSupply);
+
         return true;
     }
 
@@ -340,24 +359,26 @@ contract XVIX is IERC20, IXVIX {
         emit Approval(_owner, _spender, _amount);
     }
 
-    function _mint(address _account, uint256 _amount) private {
+    function _mint(address _account, uint256 _amount) private returns (uint256) {
         require(_account != address(0), "XVIX: mint to the zero address");
-        if (_amount == 0) { return; }
+        if (_amount == 0) { return 0; }
 
-        _increaseBalance(_account, _amount);
+        uint256 adjustedAmount = _increaseBalance(_account, _amount);
         emit Transfer(address(0), _account, _amount);
-
         _emitFloorPrice();
+
+        return adjustedAmount;
     }
 
-    function _burn(address _account, uint256 _amount) private {
+    function _burn(address _account, uint256 _amount) private returns (uint256) {
         require(_account != address(0), "XVIX: burn from the zero address");
-        if (_amount == 0) { return; }
+        if (_amount == 0) { return 0; }
 
-        _decreaseBalance(_account, _amount);
+        uint256 adjustedAmount = _decreaseBalance(_account, _amount);
         emit Transfer(_account, address(0), _amount);
-
         _emitFloorPrice();
+
+        return adjustedAmount;
     }
 
     function _increaseBalance(address _account, uint256 _amount) private returns (uint256) {
