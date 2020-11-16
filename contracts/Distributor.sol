@@ -170,8 +170,8 @@ contract Distributor is ReentrancyGuard {
 
         IFloor(floor).refund(_to, refundAmount);
 
-        uint256 lockAmount = amountXVIX.sub(refundAmount);
-        IXVIX(xvix).lock(lockAmount);
+        uint256 toastAmount = amountXVIX.sub(refundAmount);
+        IXVIX(xvix).toast(toastAmount);
 
         emit RemoveLiquidity(_to, _lgeToken, _lgeTokenAmount);
 

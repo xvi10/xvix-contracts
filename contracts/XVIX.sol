@@ -31,9 +31,8 @@ contract XVIX is IERC20, IXVIX {
     uint256 public constant MIN_REBASE_BASIS_POINTS = 1; // 0.01%
     uint256 public constant MAX_REBASE_BASIS_POINTS = 500; // 5%
 
-    // this will be reached 20 years after the first rebase
+    // MAX_NORMAL_DIVISOR will be reached 20 years after the first rebase
     uint256 public constant MAX_NORMAL_DIVISOR = 10**23;
-
     uint256 public constant SAFE_DIVISOR = 10**8;
 
     string public constant name = "XVIX";
@@ -41,9 +40,6 @@ contract XVIX is IERC20, IXVIX {
     uint8 public constant decimals = 18;
 
     string public website = "https://xvix.finance/";
-
-    mapping (address => uint256) public balances;
-    mapping (address => mapping (address => uint256)) public allowances;
 
     address public gov;
     address public minter;
@@ -67,14 +63,16 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public govHandoverTime;
 
+    mapping (address => uint256) public balances;
+    mapping (address => mapping (address => uint256)) public allowances;
+
     // msg.sender => transfer config
     mapping (address => TransferConfig) transferConfigs;
 
     // balances in safe addresses do not get rebased
     mapping (address => bool) public safes;
 
-    event Toast(address indexed account, uint256 value);
-    event Lock(address indexed account, uint256 value, uint256 maxSupply);
+    event Toast(address indexed account, uint256 value, uint256 maxSupply);
     event FloorPrice(uint256 capital, uint256 supply);
     event Rebase(uint256 normalDivisor);
 
@@ -96,6 +94,11 @@ contract XVIX is IERC20, IXVIX {
         require(supply == totalSupply(), "XVIX: total supply was modified");
     }
 
+    modifier enforceMaxSupply() {
+        _;
+        require(totalSupply() <= maxSupply, "XVIX: max supply exceeded");
+    }
+
     constructor(uint256 _initialSupply, uint256 _maxSupply, uint256 _govHandoverTime) public {
         gov = msg.sender;
         govHandoverTime = _govHandoverTime;
@@ -104,7 +107,34 @@ contract XVIX is IERC20, IXVIX {
         _setNextRebaseTime();
     }
 
-    function createSafe(address _account) public onlyGov invariantTotalSupply {
+    function setGov(address _gov) public onlyGov {
+        gov = _gov;
+    }
+
+    function setWebsite(string memory _website) public onlyGov {
+        website = _website;
+    }
+
+    function setMinter(address _minter) public onlyGov {
+        require(minter == address(0), "XVIX: minter already set");
+        minter = _minter;
+    }
+
+    function setFloor(address _floor) public onlyGov {
+        require(floor == address(0), "XVIX: floor already set");
+        floor = _floor;
+    }
+
+    function setDistributor(address _distributor) public onlyGov {
+        require(distributor == address(0), "XVIX: distributor already set");
+        distributor = _distributor;
+    }
+
+    function setFund(address _fund) public onlyGov {
+        fund = _fund;
+    }
+
+    function createSafe(address _account) public onlyGov invariantTotalSupply enforceMaxSupply {
         require(!safes[_account], "XVIX: account is already a safe");
         safes[_account] = true;
 
@@ -114,8 +144,6 @@ contract XVIX is IERC20, IXVIX {
         uint256 safeBalance = balance.mul(SAFE_DIVISOR).div(normalDivisor);
         balances[_account] = safeBalance;
         safeSupply = safeSupply.add(safeBalance);
-
-        _ensureMaxSupply();
     }
 
     // possible gov attack vector: since XLGE participants have their funds locked
@@ -127,7 +155,7 @@ contract XVIX is IERC20, IXVIX {
     // then it would be difficult for the attack to be profitable
     // since the attack would cause the price of XVIX to drop and XLGE participants
     // would withdraw their funds as well
-    function destroySafe(address _account) public onlyGov onlyAfterHandover invariantTotalSupply {
+    function destroySafe(address _account) public onlyGov onlyAfterHandover invariantTotalSupply enforceMaxSupply {
         require(safes[_account], "XVIX: account is not a safe");
         safes[_account] = false;
 
@@ -137,8 +165,6 @@ contract XVIX is IERC20, IXVIX {
         uint256 normalBalance = balance.mul(normalDivisor).div(SAFE_DIVISOR);
         balances[_account] = normalBalance;
         normalSupply = normalSupply.add(normalBalance);
-
-        _ensureMaxSupply();
     }
 
     function setDefaultTransferConfig(
@@ -222,33 +248,6 @@ contract XVIX is IERC20, IXVIX {
         emit Rebase(normalDivisor);
     }
 
-    function setGov(address _gov) public onlyGov {
-        gov = _gov;
-    }
-
-    function setWebsite(string memory _website) public onlyGov {
-        website = _website;
-    }
-
-    function setMinter(address _minter) public onlyGov {
-        require(minter == address(0), "XVIX: minter already set");
-        minter = _minter;
-    }
-
-    function setFloor(address _floor) public onlyGov {
-        require(floor == address(0), "XVIX: floor already set");
-        floor = _floor;
-    }
-
-    function setDistributor(address _distributor) public onlyGov {
-        require(distributor == address(0), "XVIX: distributor already set");
-        distributor = _distributor;
-    }
-
-    function setFund(address _fund) public onlyGov {
-        fund = _fund;
-    }
-
     function mint(address _account, uint256 _amount) public override returns (bool) {
         require(msg.sender == minter, "XVIX: forbidden");
         _mint(_account, _amount);
@@ -256,13 +255,13 @@ contract XVIX is IERC20, IXVIX {
     }
 
     // permanently remove tokens from circulation by reducing maxSupply
-    function lock(uint256 _amount) public override returns (bool) {
+    function toast(uint256 _amount) public override returns (bool) {
         require(msg.sender == distributor, "XVIX: forbidden");
         if (_amount == 0) { return false; }
 
         _burn(msg.sender, _amount);
         maxSupply = maxSupply.sub(_amount);
-        emit Lock(msg.sender, _amount, maxSupply);
+        emit Toast(msg.sender, _amount, maxSupply);
 
         return true;
     }
@@ -270,12 +269,6 @@ contract XVIX is IERC20, IXVIX {
     function burn(address _account, uint256 _amount) public override returns (bool) {
         require(msg.sender == floor, "XVIX: forbidden");
         _burn(_account, _amount);
-        return true;
-    }
-
-    function toast(uint256 _amount) public returns (bool) {
-        _burn(msg.sender, _amount);
-        emit Toast(msg.sender, _amount);
         return true;
     }
 
@@ -368,7 +361,7 @@ contract XVIX is IERC20, IXVIX {
             emit Transfer(_sender, address(0), burnAmount);
         }
 
-        require(supply <= totalSupply(), "XVIX: total supply was increased");
+        require(totalSupply() <= supply, "XVIX: total supply was increased");
     }
 
     function _getTransferConfig() private view returns (uint256, uint256, uint256, uint256) {
@@ -418,21 +411,19 @@ contract XVIX is IERC20, IXVIX {
         return adjustedAmount;
     }
 
-    function _increaseBalance(address _account, uint256 _amount) private returns (uint256) {
+    function _increaseBalance(address _account, uint256 _amount) private enforceMaxSupply returns (uint256) {
         if (_amount == 0) { return 0; }
 
         if (safes[_account]) {
             uint256 adjustedAmount = _amount.mul(SAFE_DIVISOR);
             balances[_account] = balances[_account].add(adjustedAmount);
             safeSupply = safeSupply.add(adjustedAmount);
-            _ensureMaxSupply();
             return adjustedAmount;
         }
 
         uint256 adjustedAmount = _amount.mul(normalDivisor);
         balances[_account] = balances[_account].add(adjustedAmount);
         normalSupply = normalSupply.add(adjustedAmount);
-        _ensureMaxSupply();
 
         return adjustedAmount;
     }
@@ -452,10 +443,6 @@ contract XVIX is IERC20, IXVIX {
         normalSupply = normalSupply.sub(adjustedAmount);
 
         return adjustedAmount;
-    }
-
-    function _ensureMaxSupply() private view {
-        require(totalSupply() <= maxSupply, "XVIX: max supply exceeded");
     }
 
     function _emitFloorPrice() private {

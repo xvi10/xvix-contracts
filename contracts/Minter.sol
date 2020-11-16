@@ -25,11 +25,10 @@ contract Minter is IMinter, ReentrancyGuard {
 
     event Mint(address indexed to, uint256 value);
 
-    constructor(address _xvix, address _floor, address _distributor, uint256 _ethReserve) public {
+    constructor(address _xvix, address _floor, address _distributor) public {
         xvix = _xvix;
         floor = _floor;
         distributor = _distributor;
-        ethReserve = _ethReserve;
     }
 
     function enableMint(uint256 _ethReserve) external override nonReentrant {

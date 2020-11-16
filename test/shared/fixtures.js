@@ -1,7 +1,7 @@
 const WETH = require("../../artifacts/WETH.json")
 const UniswapV2Pair = require("../../artifacts/UniswapV2Pair.json")
 
-const { expandDecimals } = require("./utilities")
+const { expandDecimals, getBlockTime } = require("./utilities")
 
 async function deployContract(name, args) {
   const contractFactory = await ethers.getContractFactory(name);
@@ -18,12 +18,13 @@ async function printPairBytecode() {
 }
 
 async function loadFixtures(provider, wallet) {
-  const lp = "0xe19A173F0d35dcFC706dD3Adb2260f5c7431f720"
-  const fund = "0xADCE46A8724eB9828391648302C58C483e0d777A"
-
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
+  const fund = { address: "0xB858587Bd4419542407BC40256fe0a428595Ffde" }
+  const blockTime = await getBlockTime(provider)
+  const govHandoverTime = blockTime + (28 * 24 * 60 * 60) // 28 days later
   const initialSupply = expandDecimals(1000, 18)
   const maxSupply = expandDecimals(2000, 18)
-  const xvix = await deployContract("XVIX", [initialSupply, maxSupply])
+  const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
   const weth = await deployContract("WETH", [])
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
@@ -34,16 +35,14 @@ async function loadFixtures(provider, wallet) {
   const pair = await contractAt("UniswapV2Pair", pairAddress)
 
   const floor = await deployContract("Floor", [xvix.address])
-  const market = await deployContract("MarketMock", [weth.address, factory.address])
-  const minter = await deployContract("Minter", [xvix.address, floor.address, expandDecimals(400, 18)])
+  const minter = await deployContract("Minter", [xvix.address, floor.address, distributor.address])
 
   await xvix.setMinter(minter.address)
   await xvix.setFloor(floor.address)
+  await xvix.setDistributor(distributor.address)
+  await xvix.setFund(fund.address)
 
-  await xvix.addExemption(pair.address)
-  await xvix.addExemption(market.address)
-
-  return { xvix, weth, router, pair, floor, market, minter, lp, fund }
+  return { xvix, weth, router, pair, floor, minter, distributor, fund }
 }
 
 module.exports = {
