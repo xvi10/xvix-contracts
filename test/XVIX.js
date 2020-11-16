@@ -189,7 +189,7 @@ describe("XVIX", function() {
     expect(await xvixMock.totalSupply()).eq("17")
   })
 
-  it("burn fails unless sender is floor", async () => {
+  it("burn can be called by floor", async () => {
     const xvixMock = await deployContract("XVIX", ["10", "20", "100"])
     await xvixMock.setMinter(user1.address)
     await xvixMock.connect(user1).mint(user0.address, "7")
@@ -201,5 +201,9 @@ describe("XVIX", function() {
     await expect(xvixMock.connect(user0).burn(user0.address, "2"))
       .to.be.revertedWith("XVIX: forbidden")
     expect(await xvixMock.balanceOf(user0.address)).eq("7")
+
+    await xvixMock.connect(user1).burn(user0.address, "2")
+    expect(await xvixMock.balanceOf(user0.address)).eq("5")
+    expect(await xvixMock.totalSupply()).eq("15")
   })
 })

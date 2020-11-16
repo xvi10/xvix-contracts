@@ -362,6 +362,8 @@ contract XVIX is IERC20, IXVIX {
         }
 
         require(totalSupply() <= supply, "XVIX: total supply was increased");
+
+        _emitFloorPrice();
     }
 
     function _getTransferConfig() private view returns (uint256, uint256, uint256, uint256) {
@@ -446,8 +448,15 @@ contract XVIX is IERC20, IXVIX {
     }
 
     function _emitFloorPrice() private {
-        if (floor != address(0)) {
+        if (_isContract(floor)) {
             emit FloorPrice(IFloor(floor).capital(), totalSupply());
         }
+    }
+
+    function _isContract(address account) private view returns (bool) {
+        uint256 size;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { size := extcodesize(account) }
+        return size > 0;
     }
 }
