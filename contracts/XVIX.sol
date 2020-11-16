@@ -27,6 +27,7 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public constant MIN_REBASE_INTERVAL = 30 minutes;
     uint256 public constant MAX_REBASE_INTERVAL = 1 weeks;
+    uint256 public constant MAX_INTERVALS_PER_REBASE = 24;
     uint256 public constant MIN_REBASE_BASIS_POINTS = 1; // 0.01%
     uint256 public constant MAX_REBASE_BASIS_POINTS = 500; // 5%
 
@@ -82,9 +83,17 @@ contract XVIX is IERC20, IXVIX {
         _;
     }
 
+    // the govHandoverTime should be set to a time after XLGE participants can
+    // withdraw their funds
     modifier onlyAfterHandover() {
         require(block.timestamp > govHandoverTime, "XVIX: handover time has not passed");
         _;
+    }
+
+    modifier invariantTotalSupply() {
+        uint256 supply = totalSupply();
+        _;
+        require(supply == totalSupply(), "XVIX: total supply was modified");
     }
 
     constructor(uint256 _initialSupply, uint256 _maxSupply, uint256 _govHandoverTime) public {
@@ -95,7 +104,7 @@ contract XVIX is IERC20, IXVIX {
         _setNextRebaseTime();
     }
 
-    function createSafe(address _account) public onlyGov {
+    function createSafe(address _account) public onlyGov invariantTotalSupply {
         require(!safes[_account], "XVIX: account is already a safe");
         safes[_account] = true;
 
@@ -109,7 +118,16 @@ contract XVIX is IERC20, IXVIX {
         _ensureMaxSupply();
     }
 
-    function destroySafe(address _account) public onlyGov onlyAfterHandover {
+    // possible gov attack vector: since XLGE participants have their funds locked
+    // for one month, it is possible for gov to create a safe address and keep
+    // XVIX tokens there while destroying all other safes
+    // this would raise the value of the tokens kept in the safe address
+    // the onlyAfterHandover modifier is added to guard against this case
+    // if this attack is attempted when XLGE participants can withdraw their funds
+    // then it would be difficult for the attack to be profitable
+    // since the attack would cause the price of XVIX to drop and XLGE participants
+    // would withdraw their funds as well
+    function destroySafe(address _account) public onlyGov onlyAfterHandover invariantTotalSupply {
         require(safes[_account], "XVIX: account is not a safe");
         safes[_account] = false;
 
@@ -185,10 +203,17 @@ contract XVIX is IERC20, IXVIX {
         uint256 timeDiff = block.timestamp.sub(nextRebaseTime);
         uint256 intervals = timeDiff.div(rebaseInterval).add(1);
 
+        // the multiplier is calculated as (~10000)^intervals
+        // the max value of intervals is capped at 24 to avoid uint256 overflow
+        if (intervals > MAX_INTERVALS_PER_REBASE) {
+            intervals = MAX_INTERVALS_PER_REBASE;
+        }
+
         _setNextRebaseTime();
 
         uint256 multiplier = BASIS_POINTS_DIVISOR.add(rebaseBasisPoints) ** intervals;
-        uint256 nextDivisor = normalDivisor.mul(multiplier).div(BASIS_POINTS_DIVISOR);
+        uint256 divider = BASIS_POINTS_DIVISOR ** intervals;
+        uint256 nextDivisor = normalDivisor.mul(multiplier).div(divider);
         if (nextDivisor > MAX_NORMAL_DIVISOR) {
             return;
         }
@@ -305,19 +330,12 @@ contract XVIX is IERC20, IXVIX {
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
         require(_sender != address(0), "XVIX: transfer from the zero address");
         require(_recipient != address(0), "XVIX: transfer to the zero address");
+        uint256 supply = totalSupply();
 
-        uint256 senderBurn = defaultSenderBurnBasisPoints;
-        uint256 senderFund = defaultSenderFundBasisPoints;
-        uint256 receiverBurn = defaultReceiverBurnBasisPoints;
-        uint256 receiverFund = defaultReceiverFundBasisPoints;
-
-        TransferConfig memory config = transferConfigs[msg.sender];
-        if (config.active) {
-            senderBurn = config.senderBurnBasisPoints;
-            senderFund = config.senderFundBasisPoints;
-            receiverBurn = config.receiverBurnBasisPoints;
-            receiverFund = config.receiverFundBasisPoints;
-        }
+        (uint256 senderBurn,
+         uint256 senderFund,
+         uint256 receiverBurn,
+         uint256 receiverFund) = _getTransferConfig();
 
         uint256 subAmount = _amount;
         uint256 senderBasisPoints = senderBurn.add(senderFund);
@@ -349,6 +367,25 @@ contract XVIX is IERC20, IXVIX {
         if (burnAmount > 0) {
             emit Transfer(_sender, address(0), burnAmount);
         }
+
+        require(supply <= totalSupply(), "XVIX: total supply was increased");
+    }
+
+    function _getTransferConfig() private view returns (uint256, uint256, uint256, uint256) {
+        uint256 senderBurn = defaultSenderBurnBasisPoints;
+        uint256 senderFund = defaultSenderFundBasisPoints;
+        uint256 receiverBurn = defaultReceiverBurnBasisPoints;
+        uint256 receiverFund = defaultReceiverFundBasisPoints;
+
+        TransferConfig memory config = transferConfigs[msg.sender];
+        if (config.active) {
+            senderBurn = config.senderBurnBasisPoints;
+            senderFund = config.senderFundBasisPoints;
+            receiverBurn = config.receiverBurnBasisPoints;
+            receiverFund = config.receiverFundBasisPoints;
+        }
+
+        return (senderBurn, senderFund, receiverBurn, receiverFund);
     }
 
     function _approve(address _owner, address _spender, uint256 _amount) private {
