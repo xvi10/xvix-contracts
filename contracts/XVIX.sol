@@ -27,7 +27,7 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public constant MIN_REBASE_INTERVAL = 30 minutes;
     uint256 public constant MAX_REBASE_INTERVAL = 1 weeks;
-    uint256 public constant MAX_INTERVALS_PER_REBASE = 24;
+    uint256 public constant MAX_INTERVALS_PER_REBASE = 10;
     uint256 public constant MAX_REBASE_BASIS_POINTS = 500; // 5%
 
     // MAX_NORMAL_DIVISOR will be reached 20 years after the first rebase
@@ -232,15 +232,21 @@ contract XVIX is IERC20, IXVIX {
         uint256 intervals = timeDiff.div(rebaseInterval).add(1);
 
         // the multiplier is calculated as (~10000)^intervals
-        // the max value of intervals is capped at 24 to avoid uint256 overflow
+        // the max value of intervals is capped at 10 to avoid uint256 overflow
+        // 2^256 has 77 digits
+        // 10,000^10 has 40
+        // MAX_NORMAL_DIVISOR has 23 digits
         if (intervals > MAX_INTERVALS_PER_REBASE) {
             intervals = MAX_INTERVALS_PER_REBASE;
         }
 
         _setNextRebaseTime();
 
+        if (rebaseBasisPoints == 0) { return; }
+
         uint256 multiplier = BASIS_POINTS_DIVISOR.add(rebaseBasisPoints) ** intervals;
         uint256 divider = BASIS_POINTS_DIVISOR ** intervals;
+
         uint256 nextDivisor = normalDivisor.mul(multiplier).div(divider);
         if (nextDivisor > MAX_NORMAL_DIVISOR) {
             return;

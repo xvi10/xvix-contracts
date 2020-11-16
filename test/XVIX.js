@@ -578,4 +578,36 @@ describe("XVIX", function() {
     await xvixMock.connect(user0).destroyTransferConfig(msgSender)
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
   })
+
+  it("rebase", async () => {
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+    expect(await xvix.normalDivisor()).eq("100000000")
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+
+    const tx0 = await xvix.rebase()
+    await reportGasUsed(provider, tx0, "rebase0 gas used")
+    expect(await xvix.normalDivisor()).eq("100060012") // 100000000 * 100.02 ^ 3
+    expect(await xvix.balanceOf(wallet.address)).eq("999400239928014399998") // ~999.4
+
+    const tx1 = await xvix.rebase()
+    await reportGasUsed(provider, tx1, "rebase1 gas used")
+    expect(await xvix.normalDivisor()).eq("100060012") // 100000000 * 100.02 ^ 3
+    expect(await xvix.balanceOf(wallet.address)).eq("999400239928014399998") // ~999.4
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 10000))
+    const tx2 = await xvix.rebase()
+    await reportGasUsed(provider, tx2, "rebase2 gas used")
+
+    expect(await xvix.normalDivisor()).eq("100260312") // 100000000 * 100.02 ^ 13
+    expect(await xvix.balanceOf(wallet.address)).eq("997403638640182966915") // ~997.4
+  })
+
+  it("applies transfer configs", async () => {
+
+  })
+
+  it("updates allowances", async () => {
+
+  })
 })
