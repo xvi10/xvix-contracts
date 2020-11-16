@@ -9,7 +9,7 @@ use(solidity)
 
 describe("XVIX", function() {
   const provider = waffle.provider
-  const [wallet, user0, user1] = provider.getWallets()
+  const [wallet, user0, user1, user2] = provider.getWallets()
   let xvix
   let minter
   let floor
@@ -95,19 +95,19 @@ describe("XVIX", function() {
   })
 
   it("inits defaultSenderBurnBasisPoints", async () => {
-    expect(await xvix.defaultSenderBurnBasisPoints()).eq(93)
+    expect(await xvix.defaultSenderBurnBasisPoints()).eq(0)
   })
 
   it("inits defaultSenderFundBasisPoints", async () => {
-    expect(await xvix.defaultSenderFundBasisPoints()).eq(7)
+    expect(await xvix.defaultSenderFundBasisPoints()).eq(0)
   })
 
   it("inits defaultReceiverBurnBasisPoints", async () => {
-    expect(await xvix.defaultReceiverBurnBasisPoints()).eq(0)
+    expect(await xvix.defaultReceiverBurnBasisPoints()).eq(93)
   })
 
   it("inits defaultReceiverFundBasisPoints", async () => {
-    expect(await xvix.defaultReceiverFundBasisPoints()).eq(0)
+    expect(await xvix.defaultReceiverFundBasisPoints()).eq(7)
   })
 
   it("inits govHandoverTime", async () => {
@@ -208,7 +208,29 @@ describe("XVIX", function() {
     expect(await xvixMock.totalSupply()).eq("15")
   })
 
+  it("toast can be called by distributor", async () => {
+    const xvixMock = await deployContract("XVIX", ["10", "20", "100"])
+    await xvixMock.setMinter(user1.address)
+    await xvixMock.connect(user1).mint(user0.address, "7")
+    expect(await xvixMock.balanceOf(user0.address)).eq("7")
+    expect(await xvixMock.totalSupply()).eq("17")
+
+
+    await expect(xvixMock.connect(user0).toast("2"))
+      .to.be.revertedWith("XVIX: forbidden")
+    expect(await xvixMock.balanceOf(user0.address)).eq("7")
+    expect(await xvixMock.maxSupply()).eq("20")
+
+    await xvixMock.setDistributor(user0.address)
+
+    await xvixMock.connect(user0).toast("2")
+    expect(await xvixMock.balanceOf(user0.address)).eq("5")
+    expect(await xvixMock.totalSupply()).eq("15")
+    expect(await xvixMock.maxSupply()).eq("18")
+  })
+
   it("transfer normal => normal", async () => {
+    await xvix.setDefaultTransferConfig(93, 7, 0, 0)
     await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
     await mineBlock(provider)
     expect(await xvix.normalDivisor()).eq("100000000")
@@ -239,6 +261,7 @@ describe("XVIX", function() {
   })
 
   it("transfer normal => safe", async () => {
+    await xvix.setDefaultTransferConfig(93, 7, 0, 0)
     await xvix.createSafe(user0.address)
     await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
     await mineBlock(provider)
@@ -271,6 +294,7 @@ describe("XVIX", function() {
   })
 
   it("transfer safe => normal", async () => {
+    await xvix.setDefaultTransferConfig(93, 7, 0, 0)
     await xvix.createSafe(wallet.address)
     await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
     await mineBlock(provider)
@@ -301,6 +325,7 @@ describe("XVIX", function() {
   })
 
   it("transfer safe => safe", async () => {
+    await xvix.setDefaultTransferConfig(93, 7, 0, 0)
     await xvix.createSafe(wallet.address)
     await xvix.createSafe(user0.address)
     await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
@@ -481,10 +506,10 @@ describe("XVIX", function() {
     await increaseTime(provider, 200)
     await mineBlock(provider)
 
-    expect(await xvixMock.defaultSenderBurnBasisPoints()).eq(93)
-    expect(await xvixMock.defaultSenderFundBasisPoints()).eq(7)
-    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(0)
-    expect(await xvixMock.defaultReceiverFundBasisPoints()).eq(0)
+    expect(await xvixMock.defaultSenderBurnBasisPoints()).eq(0)
+    expect(await xvixMock.defaultSenderFundBasisPoints()).eq(0)
+    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(93)
+    expect(await xvixMock.defaultReceiverFundBasisPoints()).eq(7)
 
     await xvixMock.setDefaultTransferConfig(1, 2, 3, 4)
 
@@ -603,11 +628,51 @@ describe("XVIX", function() {
     expect(await xvix.balanceOf(wallet.address)).eq("997403638640182966915") // ~997.4
   })
 
-  it("applies transfer configs", async () => {
+  it("updates allowances", async () => {
+    await xvix.createSafe(wallet.address)
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+    await xvix.rebase()
 
+    await xvix.transfer(user0.address, 1000)
+    expect(await xvix.balanceOf(user0.address)).eq(990)
+    await xvix.connect(user0).approve(user1.address, 500)
+    expect(await xvix.allowance(user0.address, user1.address)).eq(500)
+
+    expect(await xvix.balanceOf(user0.address)).eq(990)
+    expect(await xvix.balanceOf(user1.address)).eq(0)
+    await xvix.connect(user1).transferFrom(user0.address, user2.address, 200)
+
+    expect(await xvix.balanceOf(user0.address)).eq(790)
+    expect(await xvix.balanceOf(user2.address)).eq(198)
+    expect(await xvix.allowance(user0.address, user1.address)).eq(300)
+
+    await expect(xvix.connect(user1).transferFrom(user0.address, user2.address, 350))
+      .to.be.revertedWith("XVIX: transfer amount exceeds allowance")
   })
 
-  it("updates allowances", async () => {
+  it("reverts transfer if sender has insufficient balance", async () => {
+    await expect(xvix.transfer(wallet.address, expandDecimals(10000, 18)))
+      .to.be.revertedWith("XVIX: subtraction amount exceeds balance")
 
+    await xvix.createSafe(wallet.address)
+
+    await expect(xvix.transfer(wallet.address, expandDecimals(10000, 18)))
+      .to.be.revertedWith("XVIX: subtraction amount exceeds balance")
+  })
+
+  it("applies transfer configs", async () => {
+    await xvix.setDefaultTransferConfig(100, 10, 200, 20)
+
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+    expect(await xvix.balanceOf(user0.address)).eq("0")
+    expect(await xvix.totalSupply()).eq(expandDecimals(1000, 18))
+
+    await xvix.transfer(user0.address, expandDecimals(100, 18))
+
+    expect(await xvix.balanceOf(wallet.address)).eq("898900000000000000000") // 898.9, 900 - 1.1
+    expect(await xvix.balanceOf(user0.address)).eq("97800000000000000000") // 97.8, 100 - 2.2
+    expect(await xvix.balanceOf(fund.address)).eq("300000000000000000") // 0.3, 0.3% of 100
+    expect(await xvix.totalSupply()).eq("997000000000000000000") // 997, 1000 - 3
   })
 })

@@ -55,10 +55,10 @@ contract XVIX is IERC20, IXVIX {
     uint256 public rebaseBasisPoints = 2; // 0.02%
     uint256 public nextRebaseTime = 0;
 
-    uint256 public defaultSenderBurnBasisPoints = 93; // 0.93%
-    uint256 public defaultSenderFundBasisPoints = 7; // 0.07%
-    uint256 public defaultReceiverBurnBasisPoints = 0;
-    uint256 public defaultReceiverFundBasisPoints = 0;
+    uint256 public defaultSenderBurnBasisPoints = 0;
+    uint256 public defaultSenderFundBasisPoints = 0;
+    uint256 public defaultReceiverBurnBasisPoints = 93; // 0.93%
+    uint256 public defaultReceiverFundBasisPoints = 7; // 0.07%
 
     uint256 public govHandoverTime;
 
