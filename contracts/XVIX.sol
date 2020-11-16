@@ -47,8 +47,8 @@ contract XVIX is IERC20, IXVIX {
     address public distributor;
     address public fund;
 
-    uint256 public normalSupply;
-    uint256 public safeSupply;
+    uint256 public _normalSupply;
+    uint256 public _safeSupply;
     uint256 public override maxSupply;
 
     uint256 public normalDivisor = 10**8;
@@ -139,11 +139,11 @@ contract XVIX is IERC20, IXVIX {
         safes[_account] = true;
 
         uint256 balance = balances[_account];
-        normalSupply = normalSupply.sub(balance);
+        _normalSupply = _normalSupply.sub(balance);
 
         uint256 safeBalance = balance.mul(SAFE_DIVISOR).div(normalDivisor);
         balances[_account] = safeBalance;
-        safeSupply = safeSupply.add(safeBalance);
+        _safeSupply = _safeSupply.add(safeBalance);
     }
 
     // possible gov attack vector: since XLGE participants have their funds locked
@@ -160,11 +160,11 @@ contract XVIX is IERC20, IXVIX {
         safes[_account] = false;
 
         uint256 balance = balances[_account];
-        safeSupply = safeSupply.sub(balance);
+        _safeSupply = _safeSupply.sub(balance);
 
         uint256 normalBalance = balance.mul(normalDivisor).div(SAFE_DIVISOR);
         balances[_account] = normalBalance;
-        normalSupply = normalSupply.add(normalBalance);
+        _normalSupply = _normalSupply.add(normalBalance);
     }
 
     function setDefaultTransferConfig(
@@ -303,16 +303,16 @@ contract XVIX is IERC20, IXVIX {
         return true;
     }
 
-    function adjustedNormalSupply() public view returns (uint256) {
-        return normalSupply.div(normalDivisor);
+    function normalSupply() public view returns (uint256) {
+        return _normalSupply.div(normalDivisor);
     }
 
-    function adjustedSafeSupply() public view returns (uint256) {
-        return safeSupply.div(SAFE_DIVISOR);
+    function safeSupply() public view returns (uint256) {
+        return _safeSupply.div(SAFE_DIVISOR);
     }
 
     function totalSupply() public view override returns (uint256) {
-        return adjustedNormalSupply().add(adjustedSafeSupply());
+        return normalSupply().add(safeSupply());
     }
 
     function _setNextRebaseTime() private {
@@ -419,13 +419,13 @@ contract XVIX is IERC20, IXVIX {
         if (safes[_account]) {
             uint256 adjustedAmount = _amount.mul(SAFE_DIVISOR);
             balances[_account] = balances[_account].add(adjustedAmount);
-            safeSupply = safeSupply.add(adjustedAmount);
+            _safeSupply = _safeSupply.add(adjustedAmount);
             return adjustedAmount;
         }
 
         uint256 adjustedAmount = _amount.mul(normalDivisor);
         balances[_account] = balances[_account].add(adjustedAmount);
-        normalSupply = normalSupply.add(adjustedAmount);
+        _normalSupply = _normalSupply.add(adjustedAmount);
 
         return adjustedAmount;
     }
@@ -436,13 +436,13 @@ contract XVIX is IERC20, IXVIX {
         if (safes[_account]) {
             uint256 adjustedAmount = _amount.mul(SAFE_DIVISOR);
             balances[_account] = balances[_account].sub(adjustedAmount, "XVIX: subtraction amount exceeds balance");
-            safeSupply = safeSupply.sub(adjustedAmount);
+            _safeSupply = _safeSupply.sub(adjustedAmount);
             return _amount;
         }
 
         uint256 adjustedAmount = _amount.mul(normalDivisor);
         balances[_account] = balances[_account].sub(adjustedAmount, "XVIX: subtraction amount exceeds balance");
-        normalSupply = normalSupply.sub(adjustedAmount);
+        _normalSupply = _normalSupply.sub(adjustedAmount);
 
         return adjustedAmount;
     }

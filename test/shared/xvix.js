@@ -1,21 +1,13 @@
-const { expect } = require("chai")
 const { getBlockTime } = require("./utilities")
 
-async function getLatestSlot(provider) {
+async function getRebaseTime(provider, xvix, intervals) {
   const blockTime = await getBlockTime(provider)
-  const interval = 7 * 24 * 60 * 60
-  return parseInt(blockTime / interval)
-}
-
-async function expectLedger(xvix, account, slot0, balance0, slot1, balance1) {
-    const ledger = await xvix.ledgers(account)
-    expect(ledger.slot0).eq(slot0)
-    expect(ledger.balance0).eq(balance0)
-    expect(ledger.slot1).eq(slot1)
-    expect(ledger.balance1).eq(balance1)
+  const nextRebaseTime = await xvix.nextRebaseTime()
+  const rebaseInterval = await xvix.rebaseInterval()
+  const targetTime = nextRebaseTime.toNumber() + intervals * rebaseInterval
+  return targetTime - blockTime - 10 // reduce by 10 for some buffer
 }
 
 module.exports = {
-  getLatestSlot,
-  expectLedger
+  getRebaseTime
 }
