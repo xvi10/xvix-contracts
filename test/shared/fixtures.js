@@ -20,8 +20,7 @@ async function printPairBytecode() {
 async function loadFixtures(provider, wallet) {
   const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
   const fund = { address: "0xB858587Bd4419542407BC40256fe0a428595Ffde" }
-  const blockTime = await getBlockTime(provider)
-  const govHandoverTime = blockTime + (28 * 24 * 60 * 60) // 28 days later
+  const govHandoverTime = 1 // for testing convenience use a govHandoverTime that has already passed
   const initialSupply = expandDecimals(1000, 18)
   const maxSupply = expandDecimals(2000, 18)
   const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
@@ -41,6 +40,8 @@ async function loadFixtures(provider, wallet) {
   await xvix.setFloor(floor.address)
   await xvix.setDistributor(distributor.address)
   await xvix.setFund(fund.address)
+
+  await xvix.createSafe(distributor.address)
 
   return { xvix, weth, router, pair, floor, minter, distributor, fund }
 }

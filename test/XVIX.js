@@ -1,8 +1,9 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { bigNumberify, expandDecimals, increaseTime, mineBlock, reportGasUsed } = require("./shared/utilities")
-const { getRebaseTime } = require("./shared/xvix")
+const { bigNumberify, expandDecimals, increaseTime, mineBlock,
+  reportGasUsed, getBlockTime } = require("./shared/utilities")
+const { getRebaseTime, expectTransferConfig } = require("./shared/xvix")
 
 use(solidity)
 
@@ -328,5 +329,253 @@ describe("XVIX", function() {
     expect(await xvix._normalSupply()).eq("700420084000000000000000")
     expect(await xvix.safeSupply()).eq("999900000000000000000") // 999.9
     expect(await xvix._safeSupply()).eq("99990000000000000000000000000")
+  })
+
+  it("createSafe", async () => {
+    expect(await xvix.normalDivisor()).eq("100000000")
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+    expect(await xvix.balances(wallet.address)).eq(expandDecimals(1000, 26))
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+
+    await xvix.rebase()
+    expect(await xvix.normalDivisor()).eq("100060012") // 100000000 * 100.02 ^ 3
+    expect(await xvix.balanceOf(wallet.address)).eq("999400239928014399998") // ~999.4
+    expect(await xvix.balances(wallet.address)).eq(expandDecimals(1000, 26))
+    expect(await xvix.totalSupply()).eq("999400239928014399998")
+    expect(await xvix.normalSupply()).eq("999400239928014399998")
+    expect(await xvix.safeSupply()).eq("0")
+
+    expect(await xvix.safes(wallet.address)).eq(false)
+    await xvix.createSafe(wallet.address)
+    expect(await xvix.safes(wallet.address)).eq(true)
+
+    await expect(xvix.createSafe(wallet.address))
+      .to.be.revertedWith("XVIX: account is already a safe")
+
+    expect(await xvix.balanceOf(wallet.address)).eq("999400239928014399998")
+    expect(await xvix.balances(wallet.address)).eq("99940023992801439999827303638")
+    expect(await xvix.totalSupply()).eq("999400239928014399998")
+    expect(await xvix.normalSupply()).eq("0")
+    expect(await xvix.safeSupply()).eq("999400239928014399998")
+  })
+
+  it("createSafe has onlyGov modifier", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    await expect(xvixMock.connect(user0).createSafe(wallet.address))
+      .to.be.revertedWith("XVIX: forbidden")
+
+    await xvixMock.setGov(user0.address)
+    expect(await xvixMock.safes(wallet.address)).eq(false)
+    await xvixMock.connect(user0).createSafe(wallet.address)
+    expect(await xvixMock.safes(wallet.address)).eq(true)
+  })
+
+  it("destroySafe", async () => {
+    await xvix.createSafe(wallet.address)
+
+    expect(await xvix.normalDivisor()).eq("100000000")
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+    expect(await xvix.balances(wallet.address)).eq(expandDecimals(1000, 26))
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+
+    await xvix.rebase()
+    expect(await xvix.normalDivisor()).eq("100060012") // 100000000 * 100.02 ^ 3
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+    expect(await xvix.balances(wallet.address)).eq(expandDecimals(1000, 26))
+    expect(await xvix.totalSupply()).eq(expandDecimals(1000, 18))
+    expect(await xvix.normalSupply()).eq("0")
+    expect(await xvix.safeSupply()).eq(expandDecimals(1000, 18))
+
+    expect(await xvix.safes(wallet.address)).eq(true)
+    await xvix.destroySafe(wallet.address)
+    expect(await xvix.safes(wallet.address)).eq(false)
+
+    await expect(xvix.destroySafe(wallet.address))
+      .to.be.revertedWith("XVIX: account is not a safe")
+
+    expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
+    expect(await xvix.balances(wallet.address)).eq("100060012000000000000000000000")
+    expect(await xvix.totalSupply()).eq(expandDecimals(1000, 18))
+    expect(await xvix.normalSupply()).eq(expandDecimals(1000, 18))
+    expect(await xvix.safeSupply()).eq("0")
+  })
+
+  it("destroySafe has onlyGov, onlyAfterHandover modifiers", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    await xvixMock.createSafe(wallet.address)
+
+    await expect(xvixMock.destroySafe(wallet.address))
+      .to.be.revertedWith("XVIX: handover time has not passed")
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    await expect(xvixMock.connect(user0).destroySafe(wallet.address))
+      .to.be.revertedWith("XVIX: forbidden")
+
+    await xvixMock.setGov(user0.address)
+
+    expect(await xvixMock.safes(wallet.address)).eq(true)
+    await xvixMock.connect(user0).destroySafe(wallet.address)
+    expect(await xvixMock.safes(wallet.address)).eq(false)
+  })
+
+  it("setRebaseConfig", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    expect(await xvixMock.rebaseInterval()).eq(60 * 60)
+    expect(await xvixMock.rebaseBasisPoints()).eq(2)
+
+    await xvixMock.setRebaseConfig(30 * 60, 500)
+
+    expect(await xvixMock.rebaseInterval()).eq(30 * 60)
+    expect(await xvixMock.rebaseBasisPoints()).eq(500)
+
+    await expect(xvixMock.setRebaseConfig(30 * 60 - 1, 2))
+      .to.be.revertedWith("XVIX: rebaseInterval below limit")
+
+    await expect(xvixMock.setRebaseConfig(7 * 24 * 60 * 60 + 1, 2))
+      .to.be.revertedWith("XVIX: rebaseInterval exceeds limit")
+
+    await expect(xvixMock.setRebaseConfig(7 * 24 * 60 * 60, 501))
+      .to.be.revertedWith("XVIX: rebaseBasisPoints exceeds limit")
+  })
+
+  it("setRebaseConfig has onlyGov, onlyAfterHandover modifiers", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+
+    await expect(xvixMock.setRebaseConfig(30 * 60, 500))
+      .to.be.revertedWith("XVIX: handover time has not passed")
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    expect(await xvixMock.rebaseInterval()).eq(60 * 60)
+    expect(await xvixMock.rebaseBasisPoints()).eq(2)
+
+    await expect(xvixMock.connect(user0).setRebaseConfig(30 * 60, 500))
+      .to.be.revertedWith("XVIX: forbidden")
+
+    await xvixMock.setGov(user0.address)
+    await xvixMock.connect(user0).setRebaseConfig(30 * 60, 500)
+
+    expect(await xvixMock.rebaseInterval()).eq(30 * 60)
+    expect(await xvixMock.rebaseBasisPoints()).eq(500)
+  })
+
+  it("setDefaultTransferConfig", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    expect(await xvixMock.defaultSenderBurnBasisPoints()).eq(93)
+    expect(await xvixMock.defaultSenderFundBasisPoints()).eq(7)
+    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(0)
+    expect(await xvixMock.defaultReceiverFundBasisPoints()).eq(0)
+
+    await xvixMock.setDefaultTransferConfig(1, 2, 3, 4)
+
+    expect(await xvixMock.defaultSenderBurnBasisPoints()).eq(1)
+    expect(await xvixMock.defaultSenderFundBasisPoints()).eq(2)
+    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(3)
+    expect(await xvixMock.defaultReceiverFundBasisPoints()).eq(4)
+
+    await expect(xvixMock.setDefaultTransferConfig(501, 2, 3, 4))
+      .to.be.revertedWith("XVIX: senderBurnBasisPoints exceeds limit")
+
+    await expect(xvixMock.setDefaultTransferConfig(1, 21, 3, 4))
+      .to.be.revertedWith("XVIX: senderFundBasisPoints exceeds limit")
+
+    await expect(xvixMock.setDefaultTransferConfig(1, 2, 501, 4))
+      .to.be.revertedWith("XVIX: receiverBurnBasisPoints exceeds limit")
+
+    await expect(xvixMock.setDefaultTransferConfig(1, 2, 3, 21))
+      .to.be.revertedWith("XVIX: receiverFundBasisPoints exceeds limit")
+  })
+
+  it("createTransferConfig", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
+    await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
+
+    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+    await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
+
+    await expect(xvixMock.createTransferConfig(msgSender, 501, 2, 3, 4))
+      .to.be.revertedWith("XVIX: senderBurnBasisPoints exceeds limit")
+
+    await expect(xvixMock.createTransferConfig(msgSender, 1, 21, 3, 4))
+      .to.be.revertedWith("XVIX: senderFundBasisPoints exceeds limit")
+
+    await expect(xvixMock.createTransferConfig(msgSender, 1, 2, 501, 4))
+      .to.be.revertedWith("XVIX: receiverBurnBasisPoints exceeds limit")
+
+    await expect(xvixMock.createTransferConfig(msgSender, 1, 2, 3, 21))
+      .to.be.revertedWith("XVIX: receiverFundBasisPoints exceeds limit")
+  })
+
+  it("createTransferConfig has onlyGov modifier", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
+    await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
+
+    await expect(xvixMock.connect(user0).createTransferConfig(msgSender, 1, 2, 3, 4))
+      .to.be.revertedWith("XVIX: forbidden")
+
+    await xvixMock.setGov(user0.address)
+    await xvixMock.connect(user0).createTransferConfig(msgSender, 1, 2, 3, 4)
+    await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
+  })
+
+  it("destroyTransferConfig", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
+    await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
+
+    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+    await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    await xvixMock.destroyTransferConfig(msgSender)
+    await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
+  })
+
+  it("destroyTransferConfig has onlyGov, onlyAfterHandover modifiers", async () => {
+    const blockTime = await getBlockTime(provider)
+    const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
+    const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
+
+    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+
+    await expect(xvixMock.destroyTransferConfig(msgSender))
+      .to.be.revertedWith("XVIX: handover time has not passed")
+
+    await increaseTime(provider, 200)
+    await mineBlock(provider)
+
+    await expect(xvixMock.connect(user0).destroyTransferConfig(msgSender))
+      .to.be.revertedWith("XVIX: forbidden")
+
+    await xvixMock.setGov(user0.address)
+    await xvixMock.connect(user0).destroyTransferConfig(msgSender)
+    await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
   })
 })

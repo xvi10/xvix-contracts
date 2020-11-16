@@ -28,7 +28,6 @@ contract XVIX is IERC20, IXVIX {
     uint256 public constant MIN_REBASE_INTERVAL = 30 minutes;
     uint256 public constant MAX_REBASE_INTERVAL = 1 weeks;
     uint256 public constant MAX_INTERVALS_PER_REBASE = 24;
-    uint256 public constant MIN_REBASE_BASIS_POINTS = 1; // 0.01%
     uint256 public constant MAX_REBASE_BASIS_POINTS = 500; // 5%
 
     // MAX_NORMAL_DIVISOR will be reached 20 years after the first rebase
@@ -67,7 +66,7 @@ contract XVIX is IERC20, IXVIX {
     mapping (address => mapping (address => uint256)) public allowances;
 
     // msg.sender => transfer config
-    mapping (address => TransferConfig) transferConfigs;
+    mapping (address => TransferConfig) public transferConfigs;
 
     // balances in safe addresses do not get rebased
     mapping (address => bool) public safes;
@@ -167,16 +166,30 @@ contract XVIX is IERC20, IXVIX {
         _normalSupply = _normalSupply.add(normalBalance);
     }
 
+    function setRebaseConfig(
+        uint256 _rebaseInterval,
+        uint256 _rebaseBasisPoints
+    ) public onlyGov onlyAfterHandover {
+        require(_rebaseInterval >= MIN_REBASE_INTERVAL, "XVIX: rebaseInterval below limit");
+        require(_rebaseInterval <= MAX_REBASE_INTERVAL, "XVIX: rebaseInterval exceeds limit");
+        require(_rebaseBasisPoints <= MAX_REBASE_BASIS_POINTS, "XVIX: rebaseBasisPoints exceeds limit");
+
+        rebaseInterval = _rebaseInterval;
+        rebaseBasisPoints = _rebaseBasisPoints;
+    }
+
     function setDefaultTransferConfig(
         uint256 _senderBurnBasisPoints,
         uint256 _senderFundBasisPoints,
         uint256 _receiverBurnBasisPoints,
         uint256 _receiverFundBasisPoints
     ) public onlyGov onlyAfterHandover {
-        require(_senderBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: senderBurnBasisPoints exceeds limit");
-        require(_senderFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: senderFundBasisPoints exceeds limit");
-        require(_receiverBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: receiverBurnBasisPoints exceeds limit");
-        require(_receiverFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: receiverFundBasisPoints exceeds limit");
+        _validateTransferConfig(
+            _senderBurnBasisPoints,
+            _senderFundBasisPoints,
+            _receiverBurnBasisPoints,
+            _receiverFundBasisPoints
+        );
 
         defaultSenderBurnBasisPoints = _senderBurnBasisPoints;
         defaultSenderFundBasisPoints = _senderFundBasisPoints;
@@ -184,20 +197,7 @@ contract XVIX is IERC20, IXVIX {
         defaultReceiverFundBasisPoints = _receiverFundBasisPoints;
     }
 
-    function setRebaseConfig(
-        uint256 _rebaseInterval,
-        uint256 _rebaseBasisPoints
-    ) public onlyGov onlyAfterHandover {
-        require(_rebaseInterval >= MIN_REBASE_INTERVAL, "XVIX: rebaseInterval exceeds limit");
-        require(_rebaseInterval <= MAX_REBASE_INTERVAL, "XVIX: rebaseInterval exceeds limit");
-        require(_rebaseBasisPoints >= MIN_REBASE_BASIS_POINTS, "XVIX: rebaseBasisPoints exceeds limit");
-        require(_rebaseBasisPoints <= MAX_REBASE_BASIS_POINTS, "XVIX: rebaseBasisPoints exceeds limit");
-
-        rebaseInterval = _rebaseInterval;
-        rebaseBasisPoints = _rebaseBasisPoints;
-    }
-
-    function createConfig(
+    function createTransferConfig(
         address _msgSender,
         uint256 _senderBurnBasisPoints,
         uint256 _senderFundBasisPoints,
@@ -205,10 +205,12 @@ contract XVIX is IERC20, IXVIX {
         uint256 _receiverFundBasisPoints
     ) public onlyGov {
         require(_msgSender != address(0), "XVIX: cannot set zero address");
-        require(_senderBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: senderBurnBasisPoints exceeds limit");
-        require(_senderFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: senderFundBasisPoints exceeds limit");
-        require(_receiverBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: receiverBurnBasisPoints exceeds limit");
-        require(_receiverFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: receiverFundBasisPoints exceeds limit");
+        _validateTransferConfig(
+            _senderBurnBasisPoints,
+            _senderFundBasisPoints,
+            _receiverBurnBasisPoints,
+            _receiverFundBasisPoints
+        );
 
         transferConfigs[_msgSender] = TransferConfig(
             true,
@@ -219,7 +221,7 @@ contract XVIX is IERC20, IXVIX {
         );
     }
 
-    function destroyConfig(address _msgSender) public onlyGov onlyAfterHandover {
+    function destroyTransferConfig(address _msgSender) public onlyGov onlyAfterHandover {
         delete transferConfigs[_msgSender];
     }
 
@@ -313,6 +315,18 @@ contract XVIX is IERC20, IXVIX {
 
     function totalSupply() public view override returns (uint256) {
         return normalSupply().add(safeSupply());
+    }
+
+    function _validateTransferConfig(
+        uint256 _senderBurnBasisPoints,
+        uint256 _senderFundBasisPoints,
+        uint256 _receiverBurnBasisPoints,
+        uint256 _receiverFundBasisPoints
+    ) private pure {
+        require(_senderBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: senderBurnBasisPoints exceeds limit");
+        require(_senderFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: senderFundBasisPoints exceeds limit");
+        require(_receiverBurnBasisPoints <= MAX_BURN_BASIS_POINTS, "XVIX: receiverBurnBasisPoints exceeds limit");
+        require(_receiverFundBasisPoints <= MAX_FUND_BASIS_POINTS, "XVIX: receiverFundBasisPoints exceeds limit");
     }
 
     function _setNextRebaseTime() private {
