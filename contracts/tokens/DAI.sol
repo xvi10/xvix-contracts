@@ -2,8 +2,8 @@
 
 pragma solidity 0.6.12;
 
-import "./libraries/token/IERC20.sol";
-import "./libraries/math/SafeMath.sol";
+import "../libraries/token/IERC20.sol";
+import "../libraries/math/SafeMath.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -29,7 +29,7 @@ import "./libraries/math/SafeMath.sol";
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract WETH is IERC20 {
+contract DAI is IERC20 {
     using SafeMath for uint256;
 
     mapping (address => uint256) private _balances;
@@ -52,13 +52,13 @@ contract WETH is IERC20 {
      * construction.
      */
     constructor () public {
-        _name = "Wrapped ETH";
-        _symbol = "WETH";
+        _name = "Dai Stablecoin";
+        _symbol = "DAI";
         _decimals = 18;
     }
 
-    function deposit() public payable {
-        _balances[msg.sender] = _balances[msg.sender].add(msg.value);
+    function mint(address _account, uint256 _amount) public {
+        _mint(_account, _amount);
     }
 
     function withdraw(uint256 amount) public {

@@ -24,13 +24,24 @@ async function loadFixtures(provider, wallet, distributor) {
   const maxSupply = expandDecimals(2000, 18)
   const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
   const weth = await deployContract("WETH", [])
+  const dai = await deployContract("DAI", [])
+
+  const pairs = { xvix: {}, weth: {} }
 
   const factory = await deployContract("UniswapV2Factory", [wallet.address])
   const router = await deployContract("UniswapV2Router", [factory.address, weth.address], { gasLimit: 6000000 })
 
   await factory.createPair(xvix.address, weth.address)
-  const pairAddress = await factory.getPair(xvix.address, weth.address)
-  const pair = await contractAt("UniswapV2Pair", pairAddress)
+  const xvixWethPairAddress = await factory.getPair(xvix.address, weth.address)
+  pairs.xvix.weth = await contractAt("UniswapV2Pair", xvixWethPairAddress)
+
+  await factory.createPair(xvix.address, dai.address)
+  const xvixDaiPairAddress = await factory.getPair(xvix.address, dai.address)
+  pairs.xvix.dai = await contractAt("UniswapV2Pair", xvixDaiPairAddress)
+
+  await factory.createPair(weth.address, dai.address)
+  const wethDaiPairAddress = await factory.getPair(weth.address, dai.address)
+  pairs.weth.dai = await contractAt("UniswapV2Pair", wethDaiPairAddress)
 
   const floor = await deployContract("Floor", [xvix.address])
   const minter = await deployContract("Minter", [xvix.address, floor.address, distributor.address])
@@ -42,7 +53,7 @@ async function loadFixtures(provider, wallet, distributor) {
 
   await xvix.createSafe(distributor.address)
 
-  return { xvix, weth, router, pair, floor, minter, distributor, fund }
+  return { xvix, weth, router, pairs, floor, minter, distributor, fund }
 }
 
 module.exports = {
