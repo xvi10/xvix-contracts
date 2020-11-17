@@ -93,6 +93,10 @@ contract Distributor is ReentrancyGuard {
             require(msg.sender == gov, "Distributor: forbidden");
         }
 
+        // update the rebase divisor so that it will not suddenly increase
+        // on the first XVIX transfer
+        IXVIX(xvix).rebase();
+
         lgeIsActive = false;
         xvixRef = IERC20(xvix).balanceOf(address(this));
 

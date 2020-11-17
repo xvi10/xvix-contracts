@@ -2,11 +2,12 @@ const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures } = require("./shared/fixtures")
 const { expandDecimals, increaseTime, mineBlock } = require("./shared/utilities")
-const { getLatestSlot, expectLedger } = require("./shared/xvix")
+const { getRebaseTime } = require("./shared/xvix")
 
 use(solidity)
 
 describe("Floor", function() {
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
   const provider = waffle.provider
   const [wallet, user0, user1] = provider.getWallets()
   let xvix
@@ -14,10 +15,14 @@ describe("Floor", function() {
   let minter
 
   beforeEach(async () => {
-    const fixtures = await loadFixtures(provider, wallet)
+    const fixtures = await loadFixtures(provider, wallet, distributor)
     xvix = fixtures.xvix
     floor = fixtures.floor
     minter = fixtures.minter
+  })
+
+  it("inits xvix", async () => {
+    expect(await floor.xvix()).eq(xvix.address)
   })
 
   it("updates capital", async () => {
@@ -74,5 +79,30 @@ describe("Floor", function() {
     await floor.refund(receiver, burnAmount)
     expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(980, 18))
     expect(await provider.getBalance(receiver)).eq("5402727272727272727")
+  })
+
+  it("refund increases after rebase", async () => {
+    const receiver = "0xb1384a11c805a6c7a2e0580aee667dc7c72221ee"
+    const burnAmount = expandDecimals(10, 18)
+    expect(await floor.getRefundAmount(burnAmount)).eq("0")
+
+    await wallet.sendTransaction({ to: floor.address, value: expandDecimals(300, 18) })
+    expect(await floor.capital()).eq(expandDecimals(300, 18))
+    expect(await xvix.totalSupply()).eq(expandDecimals(1000, 18))
+    expect(await floor.getRefundAmount(burnAmount)).eq("2700000000000000000") // 10 / 1000 * 300 * 0.9
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+
+    await xvix.rebase()
+
+    expect(await xvix.totalSupply()).eq("999400239928014399998") // ~999.4
+    expect(await floor.getRefundAmount(burnAmount)).eq("2701620324000000000") // 10 / 999.4... * 300 * 0.9
+
+    expect(await xvix.balanceOf(wallet.address)).eq("999400239928014399998")
+    expect(await provider.getBalance(receiver)).eq("0")
+    await floor.refund(receiver, burnAmount)
+    expect(await xvix.balanceOf(wallet.address)).eq("989400239928014399998")
+    expect(await provider.getBalance(receiver)).eq("2701620324000000000")
   })
 })

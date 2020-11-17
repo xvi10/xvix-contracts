@@ -18,10 +18,10 @@ async function main() {
 
   const txn = await factory.createPair(xvix.address, weth.address)
   await txn.wait()
-  console.log("Pair created", txn.hash)
+  console.info("Pair created", txn.hash)
   const pairAddress = await factory.getPair(xvix.address, weth.address)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
-  console.log("Deployed pair to " + pair.address)
+  console.info("Deployed pair to " + pair.address)
 
   const floor = await deployContract("Floor", [xvix.address])
   const market = await deployContract("Market", [weth.address, factory.address])

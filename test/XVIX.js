@@ -8,20 +8,19 @@ const { getRebaseTime, expectTransferConfig } = require("./shared/xvix")
 use(solidity)
 
 describe("XVIX", function() {
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
   const provider = waffle.provider
   const [wallet, user0, user1, user2] = provider.getWallets()
   let xvix
   let minter
   let floor
-  let distributor
   let fund
 
   beforeEach(async () => {
-    const fixtures = await loadFixtures(provider, wallet)
+    const fixtures = await loadFixtures(provider, wallet, distributor)
     xvix = fixtures.xvix
     minter = fixtures.minter
     floor = fixtures.floor
-    distributor = fixtures.distributor
     fund = fixtures.fund
   })
 

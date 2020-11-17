@@ -225,7 +225,7 @@ contract XVIX is IERC20, IXVIX {
         delete transferConfigs[_msgSender];
     }
 
-    function rebase() public {
+    function rebase() public override {
         if (block.timestamp < nextRebaseTime) { return; }
         // calculate the number of intervals that have passed
         uint256 timeDiff = block.timestamp.sub(nextRebaseTime);

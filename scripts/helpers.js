@@ -1,9 +1,9 @@
 async function deployContract(name, args) {
   const contractFactory = await ethers.getContractFactory(name);
   const contract = await contractFactory.deploy(...args);
-  console.log(`Deploying ${name} to ${contract.address}...`)
+  console.info(`Deploying ${name} to ${contract.address}...`)
   await contract.deployTransaction.wait()
-  console.log("... Completed!")
+  console.info("... Completed!")
   return contract
 }
 

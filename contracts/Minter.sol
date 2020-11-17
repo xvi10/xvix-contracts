@@ -32,9 +32,9 @@ contract Minter is IMinter, ReentrancyGuard {
     }
 
     function enableMint(uint256 _ethReserve) external override nonReentrant {
-        require(!active, "Minter: already active");
-        require(_ethReserve != 0, "Minter: insufficient eth reserve");
         require(msg.sender == distributor, "Minter: forbidden");
+        require(_ethReserve != 0, "Minter: insufficient eth reserve");
+        require(!active, "Minter: already active");
 
         active = true;
         ethReserve = _ethReserve;
@@ -58,13 +58,12 @@ contract Minter is IMinter, ReentrancyGuard {
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
-        if (IFloor(floor).capital() == 0) {
-            return 0;
-        }
+        if (!active) { return 0; }
+        if (IFloor(floor).capital() == 0) { return 0; }
 
-        uint256 k = ethReserve.mul(tokenReserve());
-        uint256 a = k.div(ethReserve.add(_ethAmount));
-        uint256 mintable = tokenReserve().sub(a);
+        uint256 numerator = _ethAmount.mul(tokenReserve());
+        uint256 denominator = ethReserve.add(_ethAmount);
+        uint256 mintable = numerator.div(denominator);
 
         // the maximum tokens that can be minted is capped by the price floor of the floor
         // this ensures that minting tokens will never reduce the price floor

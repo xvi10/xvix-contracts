@@ -7,10 +7,10 @@ async function main(tokenAddress) {
 
   const txn = await factory.createPair(xvix.address, tokenAddress)
   await txn.wait()
-  console.log("Pair created", txn.hash)
+  console.info("Pair created", txn.hash)
   const pairAddress = await factory.getPair(xvix.address, tokenAddress)
   const pair = await contractAt("UniswapV2Pair", pairAddress)
-  console.log("Deployed pair to " + pair.address)
+  console.info("Deployed pair to " + pair.address)
 
   await xvix.addExemption(pair.address)
 

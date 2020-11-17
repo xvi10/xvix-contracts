@@ -14,11 +14,10 @@ async function contractAt(name, address) {
 }
 
 async function printPairBytecode() {
-  console.log("UniswapV2Pair.bytecode", ethers.utils.keccak256(UniswapV2Pair.bytecode))
+  console.info("UniswapV2Pair.bytecode", ethers.utils.keccak256(UniswapV2Pair.bytecode))
 }
 
-async function loadFixtures(provider, wallet) {
-  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
+async function loadFixtures(provider, wallet, distributor) {
   const fund = { address: "0xB858587Bd4419542407BC40256fe0a428595Ffde" }
   const govHandoverTime = 1 // for testing convenience use a govHandoverTime that has already passed
   const initialSupply = expandDecimals(1000, 18)

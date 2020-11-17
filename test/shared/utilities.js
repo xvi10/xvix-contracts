@@ -24,7 +24,7 @@ async function gasUsed(provider, tx) {
 
 async function reportGasUsed(provider, tx, label) {
   const { gasUsed } = await provider.getTransactionReceipt(tx.hash)
-  console.log(label, gasUsed.toString())
+  console.info(label, gasUsed.toString())
 }
 
 async function getBlockTime(provider) {
