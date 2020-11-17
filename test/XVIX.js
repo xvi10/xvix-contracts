@@ -175,7 +175,7 @@ describe("XVIX", function() {
     expect(await xvix.fund()).eq(user1.address)
   })
 
-  it("mint can be called by minter", async () => {
+  it("mint", async () => {
     const xvixMock = await deployContract("XVIX", ["10", "50", "100"])
     await xvixMock.setMinter(user1.address)
     expect(await xvixMock.balanceOf(user1.address)).eq("0")
@@ -198,11 +198,14 @@ describe("XVIX", function() {
 
     await xvixMock.connect(user1).mint(user1.address, "9")
 
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
     expect(await xvixMock.balanceOf(user1.address)).eq("15")
     expect(await xvixMock.totalSupply()).eq("25")
 
     await xvixMock.createSafe(user1.address)
 
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
+    expect(await xvixMock.balanceOf(user1.address)).eq("15")
     expect(await xvixMock.totalSupply()).eq("24")
 
     await increaseTime(provider, await getRebaseTime(provider, xvix, 10))
@@ -224,7 +227,7 @@ describe("XVIX", function() {
     expect(await xvixMock.totalSupply()).eq("33")
   })
 
-  it("burn can be called by floor", async () => {
+  it("burn", async () => {
     const xvixMock = await deployContract("XVIX", ["10", "20", "100"])
     await xvixMock.setMinter(user1.address)
     await xvixMock.connect(user1).mint(user0.address, "7")
@@ -267,7 +270,7 @@ describe("XVIX", function() {
     expect(await xvixMock.totalSupply()).eq("10")
   })
 
-  it("toast can be called by distributor", async () => {
+  it("toast", async () => {
     const xvixMock = await deployContract("XVIX", ["10", "20", "100"])
     await xvixMock.setMinter(user1.address)
     await xvixMock.connect(user1).mint(user0.address, "7")
