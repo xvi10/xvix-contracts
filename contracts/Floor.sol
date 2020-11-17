@@ -47,6 +47,11 @@ contract Floor is IFloor, ReentrancyGuard {
         return refundAmount;
     }
 
+    // if the total supply of XVIX is 1000 and the capital is 200 ETH
+    // then this would return 5 for an input of 1
+    // for every 1 ETH, the minter should allow a maximum of 5 XVIX to be minted
+    // if the minter allows more than 5 XVIX to be minted for 1 ETH, e.g. 10 XVIX,
+    // then this would result in the floor price decreasing
     function getMaxMintAmount(uint256 _ethAmount) external override view returns (uint256) {
         if (capital == 0) {
             return 0;
