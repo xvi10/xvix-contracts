@@ -176,7 +176,7 @@ describe("XVIX", function() {
   })
 
   it("mint can be called by minter", async () => {
-    const xvixMock = await deployContract("XVIX", ["10", "20", "100"])
+    const xvixMock = await deployContract("XVIX", ["10", "50", "100"])
     await xvixMock.setMinter(user1.address)
     expect(await xvixMock.balanceOf(user1.address)).eq("0")
 
@@ -187,6 +187,41 @@ describe("XVIX", function() {
     await xvixMock.connect(user1).mint(user1.address, "7")
     expect(await xvixMock.balanceOf(user1.address)).eq("7")
     expect(await xvixMock.totalSupply()).eq("17")
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+    await xvixMock.rebase()
+
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
+    expect(await xvixMock.balanceOf(user1.address)).eq("6")
+    expect(await xvixMock.totalSupply()).eq("16")
+
+    await xvixMock.connect(user1).mint(user1.address, "9")
+
+    expect(await xvixMock.balanceOf(user1.address)).eq("15")
+    expect(await xvixMock.totalSupply()).eq("25")
+
+    await xvixMock.createSafe(user1.address)
+
+    expect(await xvixMock.totalSupply()).eq("24")
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 10))
+    await mineBlock(provider)
+    await xvixMock.rebase()
+
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
+    expect(await xvixMock.balanceOf(user1.address)).eq("15")
+    expect(await xvixMock.totalSupply()).eq("24")
+
+    await xvixMock.connect(user1).mint(user1.address, "9")
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 10))
+    await mineBlock(provider)
+    await xvixMock.rebase()
+
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
+    expect(await xvixMock.balanceOf(user1.address)).eq("24")
+    expect(await xvixMock.totalSupply()).eq("33")
   })
 
   it("burn can be called by floor", async () => {
@@ -205,6 +240,31 @@ describe("XVIX", function() {
     await xvixMock.connect(user1).burn(user0.address, "2")
     expect(await xvixMock.balanceOf(user0.address)).eq("5")
     expect(await xvixMock.totalSupply()).eq("15")
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+    await xvixMock.rebase()
+
+    expect(await xvixMock.balanceOf(user0.address)).eq("4")
+    expect(await xvixMock.totalSupply()).eq("14")
+
+    await xvixMock.connect(user1).burn(user0.address, "1")
+    expect(await xvixMock.balanceOf(user0.address)).eq("3")
+    expect(await xvixMock.totalSupply()).eq("13")
+
+    await xvixMock.createSafe(user0.address)
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 3))
+    await mineBlock(provider)
+    await xvixMock.rebase()
+
+    expect(await xvixMock.balanceOf(user0.address)).eq("3")
+    expect(await xvixMock.balanceOf(wallet.address)).eq("9")
+    expect(await xvixMock.totalSupply()).eq("12")
+
+    await xvixMock.connect(user1).burn(user0.address, "2")
+    expect(await xvixMock.balanceOf(user0.address)).eq("1")
+    expect(await xvixMock.totalSupply()).eq("10")
   })
 
   it("toast can be called by distributor", async () => {

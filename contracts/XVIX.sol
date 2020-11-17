@@ -87,12 +87,6 @@ contract XVIX is IERC20, IXVIX {
         _;
     }
 
-    modifier invariantTotalSupply() {
-        uint256 supply = totalSupply();
-        _;
-        require(supply == totalSupply(), "XVIX: total supply was modified");
-    }
-
     modifier enforceMaxSupply() {
         _;
         require(totalSupply() <= maxSupply, "XVIX: max supply exceeded");
@@ -133,7 +127,7 @@ contract XVIX is IERC20, IXVIX {
         fund = _fund;
     }
 
-    function createSafe(address _account) public onlyGov invariantTotalSupply enforceMaxSupply {
+    function createSafe(address _account) public onlyGov enforceMaxSupply {
         require(!safes[_account], "XVIX: account is already a safe");
         safes[_account] = true;
 
@@ -154,7 +148,7 @@ contract XVIX is IERC20, IXVIX {
     // then it would be difficult for the attack to be profitable
     // since the attack would cause the price of XVIX to drop and XLGE participants
     // would withdraw their funds as well
-    function destroySafe(address _account) public onlyGov onlyAfterHandover invariantTotalSupply enforceMaxSupply {
+    function destroySafe(address _account) public onlyGov onlyAfterHandover enforceMaxSupply {
         require(safes[_account], "XVIX: account is not a safe");
         safes[_account] = false;
 
@@ -343,7 +337,6 @@ contract XVIX is IERC20, IXVIX {
     function _transfer(address _sender, address _recipient, uint256 _amount) private {
         require(_sender != address(0), "XVIX: transfer from the zero address");
         require(_recipient != address(0), "XVIX: transfer to the zero address");
-        uint256 supply = totalSupply();
 
         (uint256 senderBurn,
          uint256 senderFund,
@@ -380,8 +373,6 @@ contract XVIX is IERC20, IXVIX {
         if (burnAmount > 0) {
             emit Transfer(_sender, address(0), burnAmount);
         }
-
-        require(totalSupply() <= supply, "XVIX: total supply was increased");
 
         _emitFloorPrice();
     }
