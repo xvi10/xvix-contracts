@@ -7,5 +7,5 @@ interface IXVIX {
     function mint(address account, uint256 amount) external returns (bool);
     function burn(address account, uint256 amount) external returns (bool);
     function toast(uint256 amount) external returns (bool);
-    function rebase() external;
+    function rebase() external returns (bool);
 }

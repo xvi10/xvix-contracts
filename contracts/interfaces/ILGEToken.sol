@@ -6,7 +6,6 @@ interface ILGEToken {
     function mint(address account, uint256 amount) external returns (bool);
     function burn(address account, uint256 amount) external returns (bool);
 
-    function pair() external view returns (address);
     function token() external view returns (address);
 
     function refBalance() external view returns (uint256);

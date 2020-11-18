@@ -219,8 +219,8 @@ contract XVIX is IERC20, IXVIX {
         delete transferConfigs[_msgSender];
     }
 
-    function rebase() public override {
-        if (block.timestamp < nextRebaseTime) { return; }
+    function rebase() public override returns (bool) {
+        if (block.timestamp < nextRebaseTime) { return false; }
         // calculate the number of intervals that have passed
         uint256 timeDiff = block.timestamp.sub(nextRebaseTime);
         uint256 intervals = timeDiff.div(rebaseInterval).add(1);
@@ -236,18 +236,20 @@ contract XVIX is IERC20, IXVIX {
 
         _setNextRebaseTime();
 
-        if (rebaseBasisPoints == 0) { return; }
+        if (rebaseBasisPoints == 0) { return false; }
 
         uint256 multiplier = BASIS_POINTS_DIVISOR.add(rebaseBasisPoints) ** intervals;
         uint256 divider = BASIS_POINTS_DIVISOR ** intervals;
 
         uint256 nextDivisor = normalDivisor.mul(multiplier).div(divider);
         if (nextDivisor > MAX_NORMAL_DIVISOR) {
-            return;
+            return false;
         }
 
         normalDivisor = nextDivisor;
         emit Rebase(normalDivisor);
+
+        return true;
     }
 
     function mint(address _account, uint256 _amount) public override returns (bool) {

@@ -12,6 +12,8 @@ import "./interfaces/IXVIX.sol";
 import "./interfaces/IFloor.sol";
 import "./interfaces/IMinter.sol";
 import "./interfaces/IUniswapV2Router.sol";
+import "./interfaces/IUniswapV2Factory.sol";
+import "@nomiclabs/buidler/console.sol";
 
 contract Distributor is ReentrancyGuard {
     using SafeMath for uint256;
@@ -19,33 +21,45 @@ contract Distributor is ReentrancyGuard {
     uint256 public constant FLOOR_BASIS_POINTS = 5000;
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
+    bool public isInitialized;
+
     uint256 public lgeEndTime;
     uint256 public lpUnlockTime;
     uint256 public xvixRef;
-    uint256 public ethRef;
-    uint256 public daiRef;
     bool public lgeIsActive = true;
 
-    address public immutable xvix;
-    address public immutable weth;
-    address public immutable dai;
-    address public immutable lgeTokenWETH;
-    address public immutable lgeTokenDAI;
-    address public immutable floor;
-    address public immutable minter;
-    address public immutable router; // uniswap router
-    address public immutable factory; // uniswap factory
-    address public immutable gov;
+    address public xvix;
+    address public weth;
+    address public dai;
+    address public lgeTokenWETH;
+    address public lgeTokenDAI;
+    address public floor;
+    address public minter;
+    address public router; // uniswap router
+    address public factory; // uniswap factory
+    address public gov;
     address[] public path;
 
     event Join(address indexed account, uint256 value);
     event RemoveLiquidity(address indexed to, address lgeToken, uint256 lgeTokenAmount);
 
-    constructor(
+    constructor() public {
+        gov = msg.sender;
+    }
+
+    receive() external payable {
+        assert(msg.sender == weth); // only accept ETH via fallback from the WETH contract
+    }
+
+    function initialize(
         address[] memory _addresses,
         uint256 _lgeEndTime,
         uint256 _lpUnlockTime
     ) public {
+        require(msg.sender == gov, "Distributor: forbidden");
+        require(!isInitialized, "Distributor: already initialized");
+        isInitialized = true;
+
         xvix = _addresses[0];
         weth = _addresses[1];
         dai = _addresses[2];
@@ -56,20 +70,25 @@ contract Distributor is ReentrancyGuard {
         router = _addresses[7];
         factory = _addresses[8];
 
-        path.push(_addresses[1]); // weth
-        path.push(_addresses[2]); // dai
+        require(ILGEToken(lgeTokenWETH).token() == weth, "Distributor: invalid lgeTokenWETH");
+        require(ILGEToken(lgeTokenDAI).token() == dai, "Distributor: invalid lgeTokenDAI");
+
+        path.push(weth);
+        path.push(dai);
 
         lgeEndTime = _lgeEndTime;
         lpUnlockTime = _lpUnlockTime;
-
-        gov = msg.sender;
     }
 
-    function join(uint256 _minDAI, uint256 _deadline) public payable nonReentrant {
+    function join(address _receiver, uint256 _minDAI, uint256 _deadline) public payable nonReentrant {
         require(lgeIsActive, "Distributor: LGE has ended");
         require(msg.value > 0, "Distributor: insufficient value");
 
-        uint256 toSwap = msg.value.div(2);
+        uint256 floorETH = msg.value.mul(FLOOR_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        (bool success,) = floor.call{value: floorETH}("");
+        require(success, "Distributor: transfer to floor failed");
+
+        uint256 toSwap = msg.value.sub(floorETH).div(2);
         IUniswapV2Router(router).swapExactETHForTokens{value: toSwap}(
             _minDAI,
             path,
@@ -77,14 +96,10 @@ contract Distributor is ReentrancyGuard {
             _deadline
         );
 
-        uint256 floorETH = msg.value.mul(FLOOR_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
-        (bool success,) = floor.call{value: floorETH}("");
-        require(success, "Distributor: transfer to floor failed");
+        ILGEToken(lgeTokenWETH).mint(_receiver, msg.value);
+        ILGEToken(lgeTokenDAI).mint(_receiver, msg.value);
 
-        ILGEToken(lgeTokenWETH).mint(msg.sender, msg.value);
-        ILGEToken(lgeTokenDAI).mint(msg.sender, msg.value);
-
-        emit Join(msg.sender, msg.value);
+        emit Join(_receiver, msg.value);
     }
 
     function endLGE(uint256 _deadline) public {
@@ -93,17 +108,21 @@ contract Distributor is ReentrancyGuard {
             require(msg.sender == gov, "Distributor: forbidden");
         }
 
+        lgeIsActive = false;
+
         // update the rebase divisor so that it will not suddenly increase
         // on the first XVIX transfer
         IXVIX(xvix).rebase();
 
-        lgeIsActive = false;
-        xvixRef = IERC20(xvix).balanceOf(address(this));
+        uint256 totalXVIX = IERC20(xvix).balanceOf(address(this));
+        require(totalXVIX > 0, "Distributor: insufficient XVIX");
 
-        _addLiquidityETH(_deadline);
-        _addLiquidityDAI(_deadline);
+        uint256 amountXVIX = totalXVIX.div(2);
 
-        IMinter(minter).enableMint(ethRef);
+        _addLiquidityETH(_deadline, amountXVIX);
+        _addLiquidityDAI(_deadline, amountXVIX);
+
+        IMinter(minter).enableMint(ILGEToken(lgeTokenWETH).refBalance());
     }
 
     function removeLiquidityDAI(
@@ -213,21 +232,23 @@ contract Distributor is ReentrancyGuard {
     }
 
     function _getLiquidityAmount(address _lgeToken, uint256 _lgeTokenAmount) private view returns (uint256) {
-        address pair = ILGEToken(_lgeToken).pair();
+        address pair = IUniswapV2Factory(factory).getPair(xvix, ILGEToken(_lgeToken).token());
         uint256 pairBalance = IERC20(pair).balanceOf(address(this));
         uint256 totalSupply = IERC20(_lgeToken).totalSupply();
         return pairBalance.mul(_lgeTokenAmount).div(totalSupply);
     }
 
-    function _addLiquidityETH(uint256 _deadline) private {
+    function _addLiquidityETH(uint256 _deadline, uint256 _amountXVIX) private {
         uint256 amountETH = address(this).balance;
-        uint256 amountXVIX = xvixRef.div(2);
+        require(amountETH > 0, "Distributor: insufficient ETH");
 
-        IUniswapV2Router(router).addLiquidityETH(
+        IERC20(xvix).approve(router, _amountXVIX);
+
+        IUniswapV2Router(router).addLiquidityETH{value: amountETH}(
             xvix, // token
-            amountXVIX, // amountTokenDesired
-            amountXVIX, // amountTokenMin
-            amountETH, // amountETHMin
+            _amountXVIX, // amountTokenDesired
+            0, // amountTokenMin
+            0, // amountETHMin
             address(this), // to
             _deadline // deadline
         );
@@ -237,17 +258,20 @@ contract Distributor is ReentrancyGuard {
         ILGEToken(lgeTokenWETH).setRefSupply(totalSupply);
     }
 
-    function _addLiquidityDAI(uint256 _deadline) private {
+    function _addLiquidityDAI(uint256 _deadline, uint256 _amountXVIX) private {
         uint256 amountDAI = IERC20(dai).balanceOf(address(this));
-        uint256 amountXVIX = xvixRef.div(2);
+        require(amountDAI > 0, "Distributor: insufficient DAI");
+
+        IERC20(xvix).approve(router, _amountXVIX);
+        IERC20(dai).approve(router, amountDAI);
 
         IUniswapV2Router(router).addLiquidity(
             xvix, // tokenA
             dai, // tokenB
-            amountXVIX, // amountADesired
+            _amountXVIX, // amountADesired
             amountDAI, // amountBDesired
-            amountXVIX, // amountAMin
-            amountDAI, // amountBMin
+            0, // amountAMin
+            0, // amountBMin
             address(this), // to
             _deadline // deadline
         );
