@@ -103,16 +103,16 @@ describe("Minter", function() {
     expect(await minter.tokenReserve()).eq(expandDecimals(1200, 18))
 
     await xvix.transfer(user2.address, expandDecimals(100, 18))
-    expect(await minter.tokenReserve()).eq("1200930000000000000000") // 1200 + 0.93
-    expect(await xvix.totalSupply()).eq("799070000000000000000") // 799.07, 1000 - 200 - 0.93
+    expect(await minter.tokenReserve()).eq("1200430000000000000000") // 1200 + 0.43
+    expect(await xvix.totalSupply()).eq("799570000000000000000") // 799.57, 1000 - 200 - 0.43
     expect(await xvix.maxSupply()).eq(expandDecimals(2000, 18))
-    expect(await xvix.balanceOf(user2.address)).eq(expandDecimals(99, 18))
+    expect(await xvix.balanceOf(user2.address)).eq("99500000000000000000")
 
     await xvix.connect(user2).toast(expandDecimals(70, 18))
-    expect(await minter.tokenReserve()).eq("1200930000000000000000") // should not change
-    expect(await xvix.totalSupply()).eq("729070000000000000000") // 729.07, 1000 - 200 - 0.93 - 70
+    expect(await minter.tokenReserve()).eq("1200430000000000000000") // should not change
+    expect(await xvix.totalSupply()).eq("729570000000000000000") // 729.57, 1000 - 200 - 0.43 - 70
     expect(await xvix.maxSupply()).eq(expandDecimals(1930, 18))
-    expect(await xvix.balanceOf(user2.address)).eq(expandDecimals(29, 18))
+    expect(await xvix.balanceOf(user2.address)).eq("29500000000000000000")
   })
 
   it("mint", async () => {

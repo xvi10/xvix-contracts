@@ -57,7 +57,7 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public defaultSenderBurnBasisPoints = 0;
     uint256 public defaultSenderFundBasisPoints = 0;
-    uint256 public defaultReceiverBurnBasisPoints = 93; // 0.93%
+    uint256 public defaultReceiverBurnBasisPoints = 43; // 0.43%
     uint256 public defaultReceiverFundBasisPoints = 7; // 0.07%
 
     uint256 public govHandoverTime;

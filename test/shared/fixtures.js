@@ -53,10 +53,11 @@ async function loadFixtures(provider, wallet, distributor) {
 
   await xvix.createSafe(distributor.address)
 
-  return { xvix, weth, router, pairs, floor, minter, distributor, fund }
+  return { xvix, weth, router, factory, pairs, floor, minter, distributor, fund }
 }
 
 module.exports = {
   deployContract,
+  contractAt,
   loadFixtures
 }

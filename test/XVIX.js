@@ -102,7 +102,7 @@ describe("XVIX", function() {
   })
 
   it("inits defaultReceiverBurnBasisPoints", async () => {
-    expect(await xvix.defaultReceiverBurnBasisPoints()).eq(93)
+    expect(await xvix.defaultReceiverBurnBasisPoints()).eq(43)
   })
 
   it("inits defaultReceiverFundBasisPoints", async () => {
@@ -570,7 +570,7 @@ describe("XVIX", function() {
 
     expect(await xvixMock.defaultSenderBurnBasisPoints()).eq(0)
     expect(await xvixMock.defaultSenderFundBasisPoints()).eq(0)
-    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(93)
+    expect(await xvixMock.defaultReceiverBurnBasisPoints()).eq(43)
     expect(await xvixMock.defaultReceiverFundBasisPoints()).eq(7)
 
     await xvixMock.setDefaultTransferConfig(1, 2, 3, 4)
@@ -697,16 +697,16 @@ describe("XVIX", function() {
     await xvix.rebase()
 
     await xvix.transfer(user0.address, 1000)
-    expect(await xvix.balanceOf(user0.address)).eq(990)
+    expect(await xvix.balanceOf(user0.address)).eq(995)
     await xvix.connect(user0).approve(user1.address, 500)
     expect(await xvix.allowance(user0.address, user1.address)).eq(500)
 
-    expect(await xvix.balanceOf(user0.address)).eq(990)
+    expect(await xvix.balanceOf(user0.address)).eq(995)
     expect(await xvix.balanceOf(user1.address)).eq(0)
     await xvix.connect(user1).transferFrom(user0.address, user2.address, 200)
 
-    expect(await xvix.balanceOf(user0.address)).eq(790)
-    expect(await xvix.balanceOf(user2.address)).eq(198)
+    expect(await xvix.balanceOf(user0.address)).eq(795)
+    expect(await xvix.balanceOf(user2.address)).eq(199)
     expect(await xvix.allowance(user0.address, user1.address)).eq(300)
 
     await expect(xvix.connect(user1).transferFrom(user0.address, user2.address, 350))

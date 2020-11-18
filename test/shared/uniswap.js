@@ -43,6 +43,16 @@ async function buyTokens({ router, wallet, receiver, weth, token, ethAmount }) {
   )
 }
 
+async function buyTokensWithFee({ router, wallet, receiver, weth, token, ethAmount }) {
+  return router.connect(wallet).swapExactETHForTokensSupportingFeeOnTransferTokens(
+    0,
+    [weth.address, token.address],
+    receiver.address,
+    ethers.constants.MaxUint256,
+    { value: ethAmount }
+  )
+}
+
 async function sellTokens({ router, wallet, receiver, weth, token, tokenAmount }) {
   await token.approve(router.address, tokenAmount)
   return router.connect(wallet).swapExactTokensForETH(
@@ -70,6 +80,7 @@ module.exports = {
   removeLiquidityETH,
   removeLiquidityETHWithFee,
   buyTokens,
+  buyTokensWithFee,
   sellTokens,
   sellTokensWithFee
 }
