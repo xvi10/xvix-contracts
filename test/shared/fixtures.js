@@ -35,6 +35,10 @@ async function loadFixtures(provider, wallet, distributor) {
   const xvixWethPairAddress = await factory.getPair(xvix.address, weth.address)
   pairs.xvix.weth = await contractAt("UniswapV2Pair", xvixWethPairAddress)
 
+  await factory.createPair(xvix.address, dai.address)
+  const xvixDaiPairAddress = await factory.getPair(xvix.address, dai.address)
+  pairs.xvix.dai = await contractAt("UniswapV2Pair", xvixDaiPairAddress)
+
   await factory.createPair(weth.address, dai.address)
   const wethDaiPairAddress = await factory.getPair(weth.address, dai.address)
   pairs.weth.dai = await contractAt("UniswapV2Pair", wethDaiPairAddress)

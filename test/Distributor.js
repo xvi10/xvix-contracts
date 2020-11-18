@@ -57,6 +57,8 @@ describe("Distributor", function() {
       lgeEndTime,
       lpUnlockTime
     )
+
+    await xvix.createSafe(distributor.address)
   })
 
   it("inits", async () => {
@@ -106,7 +108,6 @@ describe("Distributor", function() {
   })
 
   it("join fails if LGE has ended", async () => {
-    await xvix.createSafe(distributor.address)
     await xvix.transfer(distributor.address, expandDecimals(100, 18))
 
     await dai.mint(wallet.address, expandDecimals(90000, 18))
@@ -121,6 +122,64 @@ describe("Distributor", function() {
   })
 
   it("endLGE", async () => {
+    await xvix.transfer(distributor.address, expandDecimals(100, 18))
 
+    await dai.mint(wallet.address, expandDecimals(90000, 18))
+    await addLiquidityETH({ router, wallet, token: dai,
+      tokenAmount: expandDecimals(90000, 18), ethAmount: expandDecimals(20, 18) })
+
+    let blockTime = await getBlockTime(provider)
+    await distributor.join(user1.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(1, 18) })
+
+    await expect(distributor.connect(user0).endLGE(blockTime + 60))
+      .to.be.revertedWith("Distributor: forbidden")
+
+    await increaseTime(provider, 42 * 24 * 60 * 60 + 10)
+    await mineBlock(provider)
+
+    blockTime = await getBlockTime(provider)
+
+    const wethPair = pairs.xvix.weth
+    const daiPair = pairs.xvix.dai
+
+    expect(await provider.getBalance(wethPair.address), 0)
+    expect(await weth.balanceOf(wethPair.address), "0")
+    expect(await xvix.balanceOf(wethPair.address), "0")
+    expect(await wethPair.balanceOf(distributor.address), "0")
+
+    expect(await provider.getBalance(daiPair.address), 0)
+    expect(await dai.balanceOf(daiPair.address), "0")
+    expect(await xvix.balanceOf(daiPair.address), "0")
+    expect(await daiPair.balanceOf(distributor.address), "0")
+
+    expect(await lgeTokenWETH.refBalance()).eq("0")
+    expect(await lgeTokenWETH.refSupply()).eq("0")
+
+    expect(await lgeTokenDAI.refBalance()).eq("0")
+    expect(await lgeTokenDAI.refSupply()).eq("0")
+
+    await distributor.connect(user0).endLGE(blockTime + 60)
+
+    // 1 ETH => 200 XVIX
+    // 1 ETH => 4500 DAI
+    // 1 XVIX => 22.5 DAI
+    expect(await provider.getBalance(wethPair.address), 0)
+    expect(await weth.balanceOf(wethPair.address), "250000000000000000") // 0.25 ETH
+    expect(await xvix.balanceOf(wethPair.address), "49501250000000000000") // ~50 XVIX
+    expect(await wethPair.balanceOf(distributor.address), "3517856236403072933")
+
+    expect(await provider.getBalance(daiPair.address), 0)
+    expect(await dai.balanceOf(daiPair.address), "1107818808104003851994") // ~1107 DAI
+    expect(await xvix.balanceOf(daiPair.address), "49501250000000000000") // ~50 XVIX
+    expect(await daiPair.balanceOf(distributor.address), "234176035867588979498")
+
+    expect(await lgeTokenWETH.refBalance()).eq("250000000000000000")
+    expect(await lgeTokenWETH.refSupply()).eq(expandDecimals(1, 18))
+
+    expect(await lgeTokenDAI.refBalance()).eq("1107818808104003851994")
+    expect(await lgeTokenDAI.refSupply()).eq(expandDecimals(1, 18))
+
+    await expect(distributor.connect(user0).endLGE(blockTime + 60))
+      .to.be.revertedWith("Distributor: LGE already ended")
   })
 })
