@@ -9,7 +9,7 @@ use(solidity)
 
 describe("Distributor", function() {
   const provider = waffle.provider
-  const [wallet, user0, user1] = provider.getWallets()
+  const [wallet, user0, user1, user2, user3] = provider.getWallets()
   let distributor
   let lgeTokenWETH
   let lgeTokenDAI
@@ -23,11 +23,12 @@ describe("Distributor", function() {
   let pairs
   let lgeEndTime
   let lpUnlockTime
+  let fund
 
   beforeEach(async () => {
     distributor = await deployContract("Distributor", [])
 
-    const fixtures = await loadFixtures(provider, wallet, distributor)
+    const fixtures = await loadFixtures(provider, wallet, distributor, user3)
     xvix = fixtures.xvix
     weth = fixtures.weth
     dai = fixtures.dai
@@ -36,6 +37,7 @@ describe("Distributor", function() {
     router = fixtures.router
     factory = fixtures.factory
     pairs = fixtures.pairs
+    fund = fixtures.fund
 
     lgeTokenWETH = await deployContract("LGEToken", ["XLGE WETH LP", "XLGE:WETH", distributor.address, weth.address])
     lgeTokenDAI = await deployContract("LGEToken", ["XLGE DAI LP", "XLGE:DAI", distributor.address, dai.address])
@@ -136,6 +138,7 @@ describe("Distributor", function() {
 
     await increaseTime(provider, 42 * 24 * 60 * 60 + 10)
     await mineBlock(provider)
+    await xvix.rebase()
 
     blockTime = await getBlockTime(provider)
 
@@ -181,5 +184,105 @@ describe("Distributor", function() {
 
     await expect(distributor.connect(user0).endLGE(blockTime + 60))
       .to.be.revertedWith("Distributor: LGE already ended")
+  })
+
+  it("removeLiquidityETH, removeLiquidityDAI", async () => {
+    await xvix.setFund(user3.address)
+    const receiver0 = { address: "0x7182B123AD5F6619B66533A85B6f180462AED05E" }
+    const receiver1 = { address: "0x10fd90D8f1543FFF6B8056BCf40dfB39231781c4" }
+
+    await xvix.transfer(distributor.address, expandDecimals(1000, 18))
+
+    await dai.mint(wallet.address, expandDecimals(90000, 18))
+    await addLiquidityETH({ router, wallet, token: dai,
+      tokenAmount: expandDecimals(90000, 18), ethAmount: expandDecimals(20, 18) })
+
+    let blockTime = await getBlockTime(provider)
+    await distributor.join(user0.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(1, 18) })
+    await distributor.join(user1.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(2, 17) })
+
+    const wethPair = pairs.xvix.weth
+    const daiPair = pairs.xvix.dai
+
+    await distributor.endLGE(blockTime + 60)
+
+    await increaseTime(provider, await getRebaseTime(provider, xvix, 45 * 24))
+    await mineBlock(provider)
+    await xvix.rebase()
+
+    blockTime = await getBlockTime(provider)
+
+    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await xvix.balanceOf(receiver0.address)).eq(0)
+    await distributor.connect(user0).removeLiquidityETH(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
+    expect(await provider.getBalance(receiver0.address)).eq("236879911258169118") // ~0.237 ETH
+    expect(await xvix.balanceOf(receiver0.address)).eq(0)
+
+    await distributor.connect(user0).removeLiquidityETH(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
+    expect(await provider.getBalance(receiver0.address)).eq("476813362730091822") // ~0.477 ETH
+    expect(await xvix.balanceOf(receiver0.address)).eq(0)
+
+    await expect(distributor.connect(user0).removeLiquidityETH(1, 0, 0, receiver0.address, blockTime + 60))
+      .to.be.revertedWith("LGEToken: burn amount exceeds balance")
+
+    expect(await provider.getBalance(receiver1.address)).eq(0)
+    await distributor.connect(user1).removeLiquidityETH(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
+    expect(await provider.getBalance(receiver0.address)).eq("476813362730091822") // ~0.0477 ETH
+
+    await distributor.connect(user1).removeLiquidityETH(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
+    expect(await provider.getBalance(receiver1.address)).eq("97806464823357572") // ~0.0978 ETH
+
+    // retrieved ETH: 0.477 + 0.0978 = 0.5748 ETH
+
+    await expect(distributor.connect(user1).removeLiquidityETH(1, 0, 0, receiver1.address, blockTime + 60))
+      .to.be.revertedWith("LGEToken: burn amount exceeds balance")
+
+    expect(await dai.balanceOf(receiver0.address)).eq(0)
+    expect(await provider.getBalance(receiver0.address)).eq("476813362730091822") // ~0.477 ETH
+    await distributor.connect(user0).removeLiquidityDAI(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
+    expect(await dai.balanceOf(receiver0.address)).eq("552545767253331058471") // ~552 DAI
+    expect(await provider.getBalance(receiver0.address)).eq("598011230986316852") // ~0.598 ETH
+
+    await distributor.connect(user0).removeLiquidityDAI(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
+    expect(await dai.balanceOf(receiver0.address)).eq("1105091534506662116945") // ~1105 DAI
+    expect(await provider.getBalance(receiver0.address)).eq("728164028320556981") // ~0.728 ETH
+
+    await expect(distributor.connect(user0).removeLiquidityDAI(1, 0, 0, receiver0.address, blockTime + 60))
+      .to.be.revertedWith("LGEToken: burn amount exceeds balance")
+
+    expect(await dai.balanceOf(receiver1.address)).eq(0)
+    expect(await provider.getBalance(receiver1.address)).eq("97806464823357572") // ~0.0978 ETH
+    await distributor.connect(user1).removeLiquidityDAI(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
+    expect(await dai.balanceOf(receiver0.address)).eq("1105091534506662116945") // ~110 DAI
+    expect(await provider.getBalance(receiver1.address)).eq("130227849479878914") // ~0.130 ETH
+
+    await distributor.connect(user1).removeLiquidityDAI(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
+    expect(await dai.balanceOf(receiver1.address)).eq("221018306901332423391") // ~221 DAI
+    expect(await provider.getBalance(receiver1.address)).eq("165861132053227734") // ~0.166 ETH
+
+    await expect(distributor.connect(user1).removeLiquidityDAI(1, 0, 0, receiver1.address, blockTime + 60))
+      .to.be.revertedWith("LGEToken: burn amount exceeds balance")
+
+    expect(await provider.getBalance(floor.address)).eq("5974839626215260") // 0.00597 ETH
+
+    // retrieved ETH: 0.728 + 0.166 + 0.00597 = ~0.9 ETH, 75% of 1.2 ETH
+
+    expect(await weth.balanceOf(wethPair.address)).eq("25")
+    expect(await dai.balanceOf(daiPair.address)).eq("1637")
+
+    expect(await xvix.balanceOf(wethPair.address)).eq("40532")
+    expect(await xvix.balanceOf(daiPair.address)).eq("610")
+
+    expect(await xvix.balanceOf(distributor.address)).eq("0")
+    expect(await xvix.balanceOf(user3.address)).eq("2084926075795882276")
+
+    expect(await provider.getBalance(receiver1.address)).eq("165861132053227734") // ~0.166 ETH
+    await floor.connect(user3).refund(receiver1.address, "2084926075795882276")
+    expect(await provider.getBalance(receiver1.address)).eq("171238487716821361") // ~0.171 ETH
+
+    expect(await xvix.balanceOf(user3.address)).eq("0")
+    expect(await xvix.totalSupply()).eq("41143") // 40532 + 610 = 41142
+
+    expect(await provider.getBalance(floor.address)).eq("597483962621633")
   })
 })

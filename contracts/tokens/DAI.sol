@@ -63,7 +63,7 @@ contract DAI is IERC20 {
 
     function withdraw(uint256 amount) public {
         require(_balances[msg.sender] >= amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
+        _balances[msg.sender] = _balances[msg.sender].sub(amount);
         msg.sender.transfer(amount);
     }
 

@@ -125,6 +125,28 @@ contract Distributor is ReentrancyGuard {
         IMinter(minter).enableMint(ILGEToken(lgeTokenWETH).refBalance());
     }
 
+    function removeLiquidityETH(
+        uint256 _lgeTokenAmount,
+        uint256 _amountXVIXMin,
+        uint256 _amountETHMin,
+        address _to,
+        uint256 _deadline
+    ) public {
+        uint256 amountWETH = _removeLiquidity(
+            lgeTokenWETH,
+            _lgeTokenAmount,
+            _amountXVIXMin,
+            _amountETHMin,
+            _to,
+            _deadline
+        );
+
+        IWETH(weth).withdraw(amountWETH);
+
+        (bool success,) = _to.call{value: amountWETH}("");
+        require(success, "Distributor: ETH transfer failed");
+    }
+
     function removeLiquidityDAI(
         uint256 _lgeTokenAmount,
         uint256 _amountXVIXMin,
@@ -144,27 +166,6 @@ contract Distributor is ReentrancyGuard {
         IERC20(dai).transfer(_to, amountDAI);
     }
 
-    function removeLiquidityETH(
-        uint256 _lgeTokenAmount,
-        uint256 _amountXVIXMin,
-        uint256 _amountTokenMin,
-        address _to,
-        uint256 _deadline
-    ) public {
-        uint256 amountWETH = _removeLiquidity(
-            lgeTokenWETH,
-            _lgeTokenAmount,
-            _amountXVIXMin,
-            _amountTokenMin,
-            _to,
-            _deadline
-        );
-
-        IWETH(weth).withdraw(amountWETH);
-        (bool success,) = _to.call{value: amountWETH}("");
-        require(success, "Distributor: ETH transfer failed");
-    }
-
     function _removeLiquidity(
         address _lgeToken,
         uint256 _lgeTokenAmount,
@@ -178,7 +179,10 @@ contract Distributor is ReentrancyGuard {
         uint256 liquidity = _getLiquidityAmount(_lgeToken, _lgeTokenAmount);
         ILGEToken(_lgeToken).burn(msg.sender, _lgeTokenAmount);
 
-        (uint256 amountXVIX, uint256 amountToken) = IUniswapV2Router(router).removeLiquidity(
+        address pair = _getPair(_lgeToken);
+        IERC20(pair).approve(router, liquidity);
+
+        IUniswapV2Router(router).removeLiquidity(
             xvix,
             ILGEToken(_lgeToken).token(),
             liquidity,
@@ -188,13 +192,20 @@ contract Distributor is ReentrancyGuard {
             _deadline
         );
 
+        uint256 amountXVIX = IERC20(xvix).balanceOf(address(this));
+        uint256 amountToken = IERC20(ILGEToken(_lgeToken).token()).balanceOf(address(this));
+
         uint256 refundBasisPoints = _getRefundBasisPoints(_lgeToken, _lgeTokenAmount, amountToken);
         uint256 refundAmount = amountXVIX.mul(refundBasisPoints).div(BASIS_POINTS_DIVISOR);
 
-        IFloor(floor).refund(_to, refundAmount);
+        if (refundAmount > 0) {
+            IFloor(floor).refund(_to, refundAmount);
+        }
 
         uint256 toastAmount = amountXVIX.sub(refundAmount);
-        IXVIX(xvix).toast(toastAmount);
+        if (toastAmount > 0) {
+            IXVIX(xvix).toast(toastAmount);
+        }
 
         emit RemoveLiquidity(_to, _lgeToken, _lgeTokenAmount);
 
@@ -232,10 +243,17 @@ contract Distributor is ReentrancyGuard {
     }
 
     function _getLiquidityAmount(address _lgeToken, uint256 _lgeTokenAmount) private view returns (uint256) {
-        address pair = IUniswapV2Factory(factory).getPair(xvix, ILGEToken(_lgeToken).token());
+        address pair = _getPair(_lgeToken);
         uint256 pairBalance = IERC20(pair).balanceOf(address(this));
         uint256 totalSupply = IERC20(_lgeToken).totalSupply();
+        if (totalSupply == 0) {
+            return 0;
+        }
         return pairBalance.mul(_lgeTokenAmount).div(totalSupply);
+    }
+
+    function _getPair(address _lgeToken) private view returns (address) {
+        return IUniswapV2Factory(factory).getPair(xvix, ILGEToken(_lgeToken).token());
     }
 
     function _addLiquidityETH(uint256 _deadline, uint256 _amountXVIX) private {

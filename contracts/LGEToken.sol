@@ -99,8 +99,8 @@ contract LGEToken is IERC20, ILGEToken {
     function _mint(address account, uint256 _amount) private {
         require(account != address(0), "LGEToken: mint to the zero address");
 
-        totalSupply = totalSupply.add(_amount);
         balances[account] = balances[account].add(_amount);
+        totalSupply = totalSupply.add(_amount);
         emit Transfer(address(0), account, _amount);
     }
 
