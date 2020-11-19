@@ -44,14 +44,6 @@ describe("Floor", function() {
     expect(await floor.getRefundAmount(burnAmount)).eq("2700000000000000000") // 10 / 1000 * 300 * 0.9
   })
 
-  it("getRefundAmount can refund all capital", async () => {
-    const burnAmount = expandDecimals(1000, 18)
-    expect(await floor.getRefundAmount(burnAmount)).eq("0")
-
-    await wallet.sendTransaction({ to: floor.address, value: expandDecimals(300, 18) })
-    expect(await floor.getRefundAmount(burnAmount)).eq(expandDecimals(300, 18))
-  })
-
   it("getMaxMintAmount", async () => {
     expect(await floor.getMaxMintAmount("1")).eq("0")
     await wallet.sendTransaction({ to: floor.address, value: expandDecimals(200, 18) })

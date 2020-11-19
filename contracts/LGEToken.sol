@@ -24,6 +24,9 @@ contract LGEToken is IERC20, ILGEToken {
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowances;
 
+    event SetRefBalance(uint256 refBalance);
+    event SetRefSupply(uint256 refSupply);
+
     modifier onlyDistributor() {
         require(msg.sender == distributor, "LGEToken: forbidden");
         _;
@@ -54,11 +57,13 @@ contract LGEToken is IERC20, ILGEToken {
 
     function setRefBalance(uint256 _refBalance) public override onlyDistributor returns (bool) {
         refBalance = _refBalance;
+        emit SetRefBalance(_refBalance);
         return true;
     }
 
     function setRefSupply(uint256 _refSupply) public override onlyDistributor returns (bool) {
         refSupply = _refSupply;
+        emit SetRefSupply(_refSupply);
         return true;
     }
 

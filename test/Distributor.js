@@ -253,7 +253,7 @@ describe("Distributor", function() {
     expect(await dai.balanceOf(receiver1.address)).eq(0)
     expect(await provider.getBalance(receiver1.address)).eq("97806464823357572") // ~0.0978 ETH
     await distributor.connect(user1).removeLiquidityDAI(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
-    expect(await dai.balanceOf(receiver0.address)).eq("1105091534506662116945") // ~110 DAI
+    expect(await dai.balanceOf(receiver1.address)).eq("110509153450666211695") // ~110.5 DAI
     expect(await provider.getBalance(receiver1.address)).eq("130227849479878914") // ~0.130 ETH
 
     await distributor.connect(user1).removeLiquidityDAI(expandDecimals(1, 17), 0, 0, receiver1.address, blockTime + 60)
@@ -266,6 +266,7 @@ describe("Distributor", function() {
     expect(await provider.getBalance(floor.address)).eq("5974839626215260") // 0.00597 ETH
 
     // retrieved ETH: 0.728 + 0.166 + 0.00597 = ~0.9 ETH, 75% of 1.2 ETH
+    // retrieved DAI: 1105 + 221 = 1326 DAI, ~0.295 ETH, 1326 / 4500
 
     expect(await weth.balanceOf(wethPair.address)).eq("25")
     expect(await dai.balanceOf(daiPair.address)).eq("1637")

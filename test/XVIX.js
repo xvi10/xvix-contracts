@@ -593,76 +593,76 @@ describe("XVIX", function() {
       .to.be.revertedWith("XVIX: receiverFundBasisPoints exceeds limit")
   })
 
-  it("createTransferConfig", async () => {
+  it("setTransferConfig", async () => {
     const blockTime = await getBlockTime(provider)
     const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
     const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
 
-    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+    await xvixMock.setTransferConfig(msgSender, 1, 2, 3, 4)
     await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
 
-    await expect(xvixMock.createTransferConfig(msgSender, 501, 2, 3, 4))
+    await expect(xvixMock.setTransferConfig(msgSender, 501, 2, 3, 4))
       .to.be.revertedWith("XVIX: senderBurnBasisPoints exceeds limit")
 
-    await expect(xvixMock.createTransferConfig(msgSender, 1, 21, 3, 4))
+    await expect(xvixMock.setTransferConfig(msgSender, 1, 21, 3, 4))
       .to.be.revertedWith("XVIX: senderFundBasisPoints exceeds limit")
 
-    await expect(xvixMock.createTransferConfig(msgSender, 1, 2, 501, 4))
+    await expect(xvixMock.setTransferConfig(msgSender, 1, 2, 501, 4))
       .to.be.revertedWith("XVIX: receiverBurnBasisPoints exceeds limit")
 
-    await expect(xvixMock.createTransferConfig(msgSender, 1, 2, 3, 21))
+    await expect(xvixMock.setTransferConfig(msgSender, 1, 2, 3, 21))
       .to.be.revertedWith("XVIX: receiverFundBasisPoints exceeds limit")
   })
 
-  it("createTransferConfig has onlyGov modifier", async () => {
+  it("setTransferConfig has onlyGov modifier", async () => {
     const blockTime = await getBlockTime(provider)
     const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
     const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
 
-    await expect(xvixMock.connect(user0).createTransferConfig(msgSender, 1, 2, 3, 4))
+    await expect(xvixMock.connect(user0).setTransferConfig(msgSender, 1, 2, 3, 4))
       .to.be.revertedWith("XVIX: forbidden")
 
     await xvixMock.setGov(user0.address)
-    await xvixMock.connect(user0).createTransferConfig(msgSender, 1, 2, 3, 4)
+    await xvixMock.connect(user0).setTransferConfig(msgSender, 1, 2, 3, 4)
     await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
   })
 
-  it("destroyTransferConfig", async () => {
+  it("clearTransferConfig", async () => {
     const blockTime = await getBlockTime(provider)
     const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
     const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
 
-    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+    await xvixMock.setTransferConfig(msgSender, 1, 2, 3, 4)
     await expectTransferConfig(xvixMock, msgSender, 1, 2, 3, 4)
 
     await increaseTime(provider, 200)
     await mineBlock(provider)
 
-    await xvixMock.destroyTransferConfig(msgSender)
+    await xvixMock.clearTransferConfig(msgSender)
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
   })
 
-  it("destroyTransferConfig has onlyGov, onlyAfterHandover modifiers", async () => {
+  it("clearTransferConfig has onlyGov, onlyAfterHandover modifiers", async () => {
     const blockTime = await getBlockTime(provider)
     const xvixMock = await deployContract("XVIX", [10, 10, blockTime + 100])
     const msgSender = "0x2690d5093fc7c6561e5ccf49aebebc8c7bd0c86f"
 
-    await xvixMock.createTransferConfig(msgSender, 1, 2, 3, 4)
+    await xvixMock.setTransferConfig(msgSender, 1, 2, 3, 4)
 
-    await expect(xvixMock.destroyTransferConfig(msgSender))
+    await expect(xvixMock.clearTransferConfig(msgSender))
       .to.be.revertedWith("XVIX: handover time has not passed")
 
     await increaseTime(provider, 200)
     await mineBlock(provider)
 
-    await expect(xvixMock.connect(user0).destroyTransferConfig(msgSender))
+    await expect(xvixMock.connect(user0).clearTransferConfig(msgSender))
       .to.be.revertedWith("XVIX: forbidden")
 
     await xvixMock.setGov(user0.address)
-    await xvixMock.connect(user0).destroyTransferConfig(msgSender)
+    await xvixMock.connect(user0).clearTransferConfig(msgSender)
     await expectTransferConfig(xvixMock, msgSender, 0, 0, 0, 0)
   })
 

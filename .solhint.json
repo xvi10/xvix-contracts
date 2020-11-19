@@ -1,6 +1,5 @@
 {
   "extends": "solhint:default",
   "rules": {
-    "indent": false
   }
 }

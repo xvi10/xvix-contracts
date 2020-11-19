@@ -27,10 +27,12 @@ contract XVIX is IERC20, IXVIX {
 
     uint256 public constant MIN_REBASE_INTERVAL = 30 minutes;
     uint256 public constant MAX_REBASE_INTERVAL = 1 weeks;
+    // cap the max intervals per rebase to avoid uint overflow errors
     uint256 public constant MAX_INTERVALS_PER_REBASE = 10;
     uint256 public constant MAX_REBASE_BASIS_POINTS = 500; // 5%
 
-    // MAX_NORMAL_DIVISOR will be reached 20 years after the first rebase
+    // cap the normalDivisor to avoid uint overflow errors
+    // the normalDivisor will be reached about 20 years after the first rebase
     uint256 public constant MAX_NORMAL_DIVISOR = 10**23;
     uint256 public constant SAFE_DIVISOR = 10**8;
 
@@ -73,7 +75,25 @@ contract XVIX is IERC20, IXVIX {
 
     event Toast(address indexed account, uint256 value, uint256 maxSupply);
     event FloorPrice(uint256 capital, uint256 supply);
-    event Rebase(uint256 normalDivisor);
+    event Rebase(uint256 normalDivisor, uint256 nextRebaseTime);
+    event GovChange(address gov);
+    event CreateSafe(address safe, uint256 balance);
+    event DestroySafe(address safe, uint256 balance);
+    event RebaseConfigChange(uint256 rebaseInterval, uint256 rebaseBasisPoints);
+    event DefaultTransferConfigChange(
+        uint256 senderBasisPoints,
+        uint256 senderFundBasisPoints,
+        uint256 receiverBurnBasisPoints,
+        uint256 receiverFundBasisPoints
+    );
+    event SetTransferConfig(
+        address indexed msgSender,
+        uint256 senderBasisPoints,
+        uint256 senderFundBasisPoints,
+        uint256 receiverBurnBasisPoints,
+        uint256 receiverFundBasisPoints
+    );
+    event ClearTransferConfig(address indexed msgSender);
 
     modifier onlyGov() {
         require(msg.sender == gov, "XVIX: forbidden");
@@ -102,6 +122,7 @@ contract XVIX is IERC20, IXVIX {
 
     function setGov(address _gov) public onlyGov {
         gov = _gov;
+        emit GovChange(_gov);
     }
 
     function setWebsite(string memory _website) public onlyGov {
@@ -137,17 +158,19 @@ contract XVIX is IERC20, IXVIX {
         uint256 safeBalance = balance.mul(SAFE_DIVISOR).div(normalDivisor);
         balances[_account] = safeBalance;
         _safeSupply = _safeSupply.add(safeBalance);
+
+        emit CreateSafe(_account, balanceOf(_account));
     }
 
-    // possible gov attack vector: since XLGE participants have their funds locked
-    // for one month, it is possible for gov to create a safe address and keep
+    // onlyAfterHandover guards against a possible gov attack vector
+    // since XLGE participants have their funds locked for one month,
+    // it is possible for gov to create a safe address and keep
     // XVIX tokens there while destroying all other safes
     // this would raise the value of the tokens kept in the safe address
-    // the onlyAfterHandover modifier is added to guard against this case
-    // if this attack is attempted when XLGE participants can withdraw their funds
-    // then it would be difficult for the attack to be profitable
-    // since the attack would cause the price of XVIX to drop and XLGE participants
-    // would withdraw their funds as well
+    //
+    // with the onlyAfterHandover modifier this attack can only be attempted
+    // after XLGE participants are able to withdraw their funds
+    // this would make it difficult for the attack to be profitable
     function destroySafe(address _account) public onlyGov onlyAfterHandover enforceMaxSupply {
         require(safes[_account], "XVIX: account is not a safe");
         safes[_account] = false;
@@ -158,6 +181,8 @@ contract XVIX is IERC20, IXVIX {
         uint256 normalBalance = balance.mul(normalDivisor).div(SAFE_DIVISOR);
         balances[_account] = normalBalance;
         _normalSupply = _normalSupply.add(normalBalance);
+
+        emit DestroySafe(_account, balanceOf(_account));
     }
 
     function setRebaseConfig(
@@ -170,6 +195,8 @@ contract XVIX is IERC20, IXVIX {
 
         rebaseInterval = _rebaseInterval;
         rebaseBasisPoints = _rebaseBasisPoints;
+
+        emit RebaseConfigChange(_rebaseInterval, _rebaseBasisPoints);
     }
 
     function setDefaultTransferConfig(
@@ -189,9 +216,16 @@ contract XVIX is IERC20, IXVIX {
         defaultSenderFundBasisPoints = _senderFundBasisPoints;
         defaultReceiverBurnBasisPoints = _receiverBurnBasisPoints;
         defaultReceiverFundBasisPoints = _receiverFundBasisPoints;
+
+        emit DefaultTransferConfigChange(
+            _senderBurnBasisPoints,
+            _senderFundBasisPoints,
+            _receiverBurnBasisPoints,
+            _receiverFundBasisPoints
+        );
     }
 
-    function createTransferConfig(
+    function setTransferConfig(
         address _msgSender,
         uint256 _senderBurnBasisPoints,
         uint256 _senderFundBasisPoints,
@@ -213,10 +247,19 @@ contract XVIX is IERC20, IXVIX {
             _receiverBurnBasisPoints,
             _receiverFundBasisPoints
         );
+
+        emit SetTransferConfig(
+            _msgSender,
+            _senderBurnBasisPoints,
+            _senderFundBasisPoints,
+            _receiverBurnBasisPoints,
+            _receiverFundBasisPoints
+        );
     }
 
-    function destroyTransferConfig(address _msgSender) public onlyGov onlyAfterHandover {
+    function clearTransferConfig(address _msgSender) public onlyGov onlyAfterHandover {
         delete transferConfigs[_msgSender];
+        emit ClearTransferConfig(_msgSender);
     }
 
     function rebase() public override returns (bool) {
@@ -226,7 +269,7 @@ contract XVIX is IERC20, IXVIX {
         uint256 intervals = timeDiff.div(rebaseInterval).add(1);
 
         // the multiplier is calculated as (~10000)^intervals
-        // the max value of intervals is capped at 10 to avoid uint256 overflow
+        // the max value of intervals is capped at 10 to avoid uint overflow errors
         // 2^256 has 77 digits
         // 10,000^10 has 40
         // MAX_NORMAL_DIVISOR has 23 digits
@@ -247,7 +290,7 @@ contract XVIX is IERC20, IXVIX {
         }
 
         normalDivisor = nextDivisor;
-        emit Rebase(normalDivisor);
+        emit Rebase(normalDivisor, nextRebaseTime);
 
         return true;
     }
@@ -345,25 +388,28 @@ contract XVIX is IERC20, IXVIX {
          uint256 receiverBurn,
          uint256 receiverFund) = _getTransferConfig();
 
-        uint256 subAmount = _amount;
+        // increase senderAmount based on senderBasisPoints
+        uint256 senderAmount = _amount;
         uint256 senderBasisPoints = senderBurn.add(senderFund);
         if (senderBasisPoints > 0) {
-            uint256 x = _amount.mul(senderBasisPoints).div(BASIS_POINTS_DIVISOR);
-            subAmount = subAmount.add(x);
+            uint256 senderTax = _amount.mul(senderBasisPoints).div(BASIS_POINTS_DIVISOR);
+            senderAmount = senderAmount.add(senderTax);
         }
 
-        uint256 addAmount = _amount;
+        // decrease receiverAmount based on receiverBasisPoints
+        uint256 receiverAmount = _amount;
         uint256 receiverBasisPoints = receiverBurn.add(receiverFund);
         if (receiverBasisPoints > 0) {
-            uint256 x = _amount.mul(receiverBasisPoints).div(BASIS_POINTS_DIVISOR);
-            addAmount = addAmount.sub(x);
+            uint256 receiverTax = _amount.mul(receiverBasisPoints).div(BASIS_POINTS_DIVISOR);
+            receiverAmount = receiverAmount.sub(receiverTax);
         }
 
-        _decreaseBalance(_sender, subAmount);
-        _increaseBalance(_recipient, addAmount);
+        _decreaseBalance(_sender, senderAmount);
+        _increaseBalance(_recipient, receiverAmount);
 
-        emit Transfer(_sender, _recipient, addAmount);
+        emit Transfer(_sender, _recipient, receiverAmount);
 
+        // increase fund balance based on fundBasisPoints
         uint256 fundBasisPoints = senderFund.add(receiverFund);
         uint256 fundAmount = _amount.mul(fundBasisPoints).div(BASIS_POINTS_DIVISOR);
         if (fundAmount > 0) {
@@ -371,7 +417,8 @@ contract XVIX is IERC20, IXVIX {
             emit Transfer(_sender, fund, fundAmount);
         }
 
-        uint256 burnAmount = subAmount.sub(addAmount).sub(fundAmount);
+        // emit burn event
+        uint256 burnAmount = senderAmount.sub(receiverAmount).sub(fundAmount);
         if (burnAmount > 0) {
             emit Transfer(_sender, address(0), burnAmount);
         }
@@ -404,60 +451,54 @@ contract XVIX is IERC20, IXVIX {
         emit Approval(_owner, _spender, _amount);
     }
 
-    function _mint(address _account, uint256 _amount) private returns (uint256) {
+    function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "XVIX: mint to the zero address");
-        if (_amount == 0) { return 0; }
+        if (_amount == 0) { return; }
 
-        uint256 adjustedAmount = _increaseBalance(_account, _amount);
+        _increaseBalance(_account, _amount);
+
         emit Transfer(address(0), _account, _amount);
         _emitFloorPrice();
-
-        return adjustedAmount;
     }
 
-    function _burn(address _account, uint256 _amount) private returns (uint256) {
+    function _burn(address _account, uint256 _amount) private {
         require(_account != address(0), "XVIX: burn from the zero address");
-        if (_amount == 0) { return 0; }
+        if (_amount == 0) { return; }
 
-        uint256 adjustedAmount = _decreaseBalance(_account, _amount);
+        _decreaseBalance(_account, _amount);
+
         emit Transfer(_account, address(0), _amount);
         _emitFloorPrice();
-
-        return adjustedAmount;
     }
 
-    function _increaseBalance(address _account, uint256 _amount) private enforceMaxSupply returns (uint256) {
-        if (_amount == 0) { return 0; }
+    function _increaseBalance(address _account, uint256 _amount) private enforceMaxSupply {
+        if (_amount == 0) { return; }
 
         if (safes[_account]) {
-            uint256 adjustedAmount = _amount.mul(SAFE_DIVISOR);
-            balances[_account] = balances[_account].add(adjustedAmount);
-            _safeSupply = _safeSupply.add(adjustedAmount);
-            return adjustedAmount;
+            uint256 safeAmount = _amount.mul(SAFE_DIVISOR);
+            balances[_account] = balances[_account].add(safeAmount);
+            _safeSupply = _safeSupply.add(safeAmount);
+            return;
         }
 
-        uint256 adjustedAmount = _amount.mul(normalDivisor);
-        balances[_account] = balances[_account].add(adjustedAmount);
-        _normalSupply = _normalSupply.add(adjustedAmount);
-
-        return adjustedAmount;
+        uint256 normalAmount = _amount.mul(normalDivisor);
+        balances[_account] = balances[_account].add(normalAmount);
+        _normalSupply = _normalSupply.add(normalAmount);
     }
 
-    function _decreaseBalance(address _account, uint256 _amount) private returns (uint256) {
-        if (_amount == 0) { return 0; }
+    function _decreaseBalance(address _account, uint256 _amount) private {
+        if (_amount == 0) { return; }
 
         if (safes[_account]) {
-            uint256 adjustedAmount = _amount.mul(SAFE_DIVISOR);
-            balances[_account] = balances[_account].sub(adjustedAmount, "XVIX: subtraction amount exceeds balance");
-            _safeSupply = _safeSupply.sub(adjustedAmount);
-            return _amount;
+            uint256 safeAmount = _amount.mul(SAFE_DIVISOR);
+            balances[_account] = balances[_account].sub(safeAmount, "XVIX: subtraction amount exceeds balance");
+            _safeSupply = _safeSupply.sub(safeAmount);
+            return;
         }
 
-        uint256 adjustedAmount = _amount.mul(normalDivisor);
-        balances[_account] = balances[_account].sub(adjustedAmount, "XVIX: subtraction amount exceeds balance");
-        _normalSupply = _normalSupply.sub(adjustedAmount);
-
-        return adjustedAmount;
+        uint256 normalAmount = _amount.mul(normalDivisor);
+        balances[_account] = balances[_account].sub(normalAmount, "XVIX: subtraction amount exceeds balance");
+        _normalSupply = _normalSupply.sub(normalAmount);
     }
 
     function _emitFloorPrice() private {

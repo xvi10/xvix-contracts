@@ -15,7 +15,11 @@ contract Reader {
         factory = _factory;
     }
 
-    function getPoolAmounts(address _account, address _token0, address _token1) external view returns (uint256, uint256, uint256, uint256, uint256) {
+    function getPoolAmounts(
+        address _account,
+        address _token0,
+        address _token1
+    ) external view returns (uint256, uint256, uint256, uint256, uint256) {
         address pair = UniswapV2Library.pairFor(factory, _token0, _token1);
         uint256 supply = IERC20(pair).totalSupply();
         if (supply == 0) {

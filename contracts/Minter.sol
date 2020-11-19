@@ -10,7 +10,7 @@ import "./interfaces/IMinter.sol";
 import "./interfaces/IXVIX.sol";
 import "./interfaces/IFloor.sol";
 
-
+// Minter: allows XVIX to be minted following a bonding curve
 contract Minter is IMinter, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -24,6 +24,7 @@ contract Minter is IMinter, ReentrancyGuard {
     bool public active = false;
 
     event Mint(address indexed to, uint256 value);
+    event FloorPrice(uint256 capital, uint256 supply);
 
     constructor(address _xvix, address _floor, address _distributor) public {
         xvix = _xvix;
@@ -31,7 +32,9 @@ contract Minter is IMinter, ReentrancyGuard {
         distributor = _distributor;
     }
 
-    function enableMint(uint256 _ethReserve) external override nonReentrant {
+    // this is called by the Distributor contract so that
+    // minting is only allowed after distribution has ended
+    function enableMint(uint256 _ethReserve) public override nonReentrant {
         require(msg.sender == distributor, "Minter: forbidden");
         require(_ethReserve != 0, "Minter: insufficient eth reserve");
         require(!active, "Minter: already active");
@@ -40,7 +43,7 @@ contract Minter is IMinter, ReentrancyGuard {
         ethReserve = _ethReserve;
     }
 
-    function mint(address _receiver) external payable nonReentrant {
+    function mint(address _receiver) public payable nonReentrant {
         require(active, "Minter: not active");
         require(ethReserve > 0, "Minter: insufficient eth reserve");
         require(msg.value > 0, "Minter: insufficient value");
@@ -55,6 +58,7 @@ contract Minter is IMinter, ReentrancyGuard {
         require(success, "Minter: transfer to floor failed");
 
         emit Mint(_receiver, toMint);
+        emit FloorPrice(IFloor(floor).capital(), IERC20(xvix).totalSupply());
     }
 
     function getMintAmount(uint256 _ethAmount) public view returns (uint256) {
@@ -65,8 +69,9 @@ contract Minter is IMinter, ReentrancyGuard {
         uint256 denominator = ethReserve.add(_ethAmount);
         uint256 mintable = numerator.div(denominator);
 
-        // the maximum tokens that can be minted is capped by the price floor of the floor
-        // this ensures that minting tokens will never reduce the price floor
+        // the maximum tokens that can be minted is capped by the floor price
+        // of the Floor contract
+        // this ensures that minting tokens will never reduce the floor price
         uint256 max = IFloor(floor).getMaxMintAmount(_ethAmount);
 
         return mintable < max ? mintable : max;

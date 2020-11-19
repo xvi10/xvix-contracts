@@ -9,7 +9,7 @@ import "./libraries/utils/ReentrancyGuard.sol";
 import "./interfaces/IFloor.sol";
 import "./interfaces/IXVIX.sol";
 
-
+// Floor: accumulates ETH and allows XVIX to be burnt for ETH
 contract Floor is IFloor, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -31,7 +31,10 @@ contract Floor is IFloor, ReentrancyGuard {
         capital = capital.add(msg.value);
     }
 
-    function refund(address _receiver, uint256 _burnAmount) external override nonReentrant returns (uint256) {
+    // when XVIX is burnt 90% is refunded while 10% of ETH is kept within
+    // this contract
+    // users who burn their tokens later will receive a larger amount of ETH
+    function refund(address _receiver, uint256 _burnAmount) public override nonReentrant returns (uint256) {
         uint256 refundAmount = getRefundAmount(_burnAmount);
         require(refundAmount > 0, "Floor: refund amount is zero");
         capital = capital.sub(refundAmount);
@@ -52,20 +55,14 @@ contract Floor is IFloor, ReentrancyGuard {
     // for every 1 ETH, the minter should allow a maximum of 5 XVIX to be minted
     // if the minter allows more than 5 XVIX to be minted for 1 ETH, e.g. 10 XVIX,
     // then this would result in the floor price decreasing
-    function getMaxMintAmount(uint256 _ethAmount) external override view returns (uint256) {
-        if (capital == 0) {
-            return 0;
-        }
+    function getMaxMintAmount(uint256 _ethAmount) public override view returns (uint256) {
+        if (capital == 0) { return 0; }
         uint256 totalSupply = IERC20(xvix).totalSupply();
         return _ethAmount.mul(totalSupply).div(capital);
     }
 
     function getRefundAmount(uint256 _tokenAmount) public view returns (uint256) {
         uint256 totalSupply = IERC20(xvix).totalSupply();
-        if (_tokenAmount == totalSupply) {
-            return capital;
-        }
-
         uint256 amount = capital.mul(_tokenAmount).div(totalSupply);
         return amount.mul(REFUND_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
     }

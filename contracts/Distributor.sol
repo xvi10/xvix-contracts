@@ -13,7 +13,6 @@ import "./interfaces/IFloor.sol";
 import "./interfaces/IMinter.sol";
 import "./interfaces/IUniswapV2Router.sol";
 import "./interfaces/IUniswapV2Factory.sol";
-import "@nomiclabs/buidler/console.sol";
 
 contract Distributor is ReentrancyGuard {
     using SafeMath for uint256;
@@ -25,8 +24,7 @@ contract Distributor is ReentrancyGuard {
 
     uint256 public lgeEndTime;
     uint256 public lpUnlockTime;
-    uint256 public xvixRef;
-    bool public lgeIsActive = true;
+    bool public lgeIsActive;
 
     address public xvix;
     address public weth;
@@ -37,13 +35,16 @@ contract Distributor is ReentrancyGuard {
     address public minter;
     address public router; // uniswap router
     address public factory; // uniswap factory
-    address public gov;
     address[] public path;
+
+    address public gov;
 
     event Join(address indexed account, uint256 value);
     event RemoveLiquidity(address indexed to, address lgeToken, uint256 lgeTokenAmount);
+    event EndLGE();
 
     constructor() public {
+        lgeIsActive = true;
         gov = msg.sender;
     }
 
@@ -55,7 +56,7 @@ contract Distributor is ReentrancyGuard {
         address[] memory _addresses,
         uint256 _lgeEndTime,
         uint256 _lpUnlockTime
-    ) public {
+    ) public nonReentrant {
         require(msg.sender == gov, "Distributor: forbidden");
         require(!isInitialized, "Distributor: already initialized");
         isInitialized = true;
@@ -70,8 +71,8 @@ contract Distributor is ReentrancyGuard {
         router = _addresses[7];
         factory = _addresses[8];
 
-        require(ILGEToken(lgeTokenWETH).token() == weth, "Distributor: invalid lgeTokenWETH");
-        require(ILGEToken(lgeTokenDAI).token() == dai, "Distributor: invalid lgeTokenDAI");
+        require(ILGEToken(lgeTokenWETH).token() == weth, "Distributor: misconfigured lgeTokenWETH");
+        require(ILGEToken(lgeTokenDAI).token() == dai, "Distributor: misconfigured lgeTokenDAI");
 
         path.push(weth);
         path.push(dai);
@@ -102,7 +103,7 @@ contract Distributor is ReentrancyGuard {
         emit Join(_receiver, msg.value);
     }
 
-    function endLGE(uint256 _deadline) public {
+    function endLGE(uint256 _deadline) public nonReentrant {
         require(lgeIsActive, "Distributor: LGE already ended");
         if (block.timestamp < lgeEndTime) {
             require(msg.sender == gov, "Distributor: forbidden");
@@ -123,6 +124,8 @@ contract Distributor is ReentrancyGuard {
         _addLiquidityDAI(_deadline, amountXVIX);
 
         IMinter(minter).enableMint(ILGEToken(lgeTokenWETH).refBalance());
+
+        emit EndLGE();
     }
 
     function removeLiquidityETH(
@@ -131,7 +134,7 @@ contract Distributor is ReentrancyGuard {
         uint256 _amountETHMin,
         address _to,
         uint256 _deadline
-    ) public {
+    ) public nonReentrant {
         uint256 amountWETH = _removeLiquidity(
             lgeTokenWETH,
             _lgeTokenAmount,
@@ -141,7 +144,7 @@ contract Distributor is ReentrancyGuard {
             _deadline
         );
 
-        IWETH(weth).withdraw(amountWETH);
+        IWETH(weth).withdraw(amountWETH); // convert WETH to ETH
 
         (bool success,) = _to.call{value: amountWETH}("");
         require(success, "Distributor: ETH transfer failed");
@@ -153,7 +156,7 @@ contract Distributor is ReentrancyGuard {
         uint256 _amountTokenMin,
         address _to,
         uint256 _deadline
-    ) public {
+    ) public nonReentrant {
         uint256 amountDAI = _removeLiquidity(
             lgeTokenDAI,
             _lgeTokenAmount,
@@ -173,11 +176,17 @@ contract Distributor is ReentrancyGuard {
         uint256 _amountTokenMin,
         address _to,
         uint256 _deadline
-    ) private nonReentrant returns (uint256) {
+    ) private returns (uint256) {
+        require(!lgeIsActive, "Distributor: LGE has not ended");
         require(block.timestamp >= lpUnlockTime, "Distributor: unlock time not yet reached");
 
         uint256 liquidity = _getLiquidityAmount(_lgeToken, _lgeTokenAmount);
+
+        // burn after calculating liquidity because _getLiquidityAmount uses
+        // lgeToken.totalSupply to calculate liquidity
         ILGEToken(_lgeToken).burn(msg.sender, _lgeTokenAmount);
+
+        if (liquidity == 0) { return 0; }
 
         address pair = _getPair(_lgeToken);
         IERC20(pair).approve(router, liquidity);
@@ -198,10 +207,13 @@ contract Distributor is ReentrancyGuard {
         uint256 refundBasisPoints = _getRefundBasisPoints(_lgeToken, _lgeTokenAmount, amountToken);
         uint256 refundAmount = amountXVIX.mul(refundBasisPoints).div(BASIS_POINTS_DIVISOR);
 
+        // burn XVIX to refund the XLGE participant
         if (refundAmount > 0) {
             IFloor(floor).refund(_to, refundAmount);
         }
 
+        // permanently remove the remaining XVIX by burning
+        // and reducing xvix.maxSupply
         uint256 toastAmount = amountXVIX.sub(refundAmount);
         if (toastAmount > 0) {
             IXVIX(xvix).toast(toastAmount);
@@ -217,21 +229,44 @@ contract Distributor is ReentrancyGuard {
         uint256 _lgeTokenAmount,
         uint256 _amountToken
     ) private view returns (uint256) {
+        // lgeTokenWETH.refBalance: total ETH holdings at endLGE
+        // lgeTokenWETH.refSupply: totalSupply of lgeTokenWETH at endLGE
+        // lgeTokenDAI.refBalance: total DAI holdings at endLGE
+        // lgeTokenDAI.refSupply: totalSupply of lgeTokenDAI at endLGE
         uint256 refBalance = ILGEToken(_lgeToken).refBalance();
         uint256 refSupply = ILGEToken(_lgeToken).refSupply();
-        // refAmount is the amount of WETH or DAI that would be returned
-        // if there was no change in the price of XVIX
+        // refAmount is the proportional amount of WETH or DAI
+        // that the user contributed for the given lgeTokenAmount
         uint256 refAmount = _lgeTokenAmount.mul(refBalance).div(refSupply);
 
-        // for simplicity, we assume that the floor received 50% of ETH
-        // and that the remaining ETH received was split equally between WETH and DAI
-        // so the refund basis points would be zero if _amountToken >= refAmount * 2
+        // if the user contributed 1 ETH, this ETH is split into:
+        // Floor: 0.5 ETH
+        // XVIX / ETH LP: 0.25 ETH
+        // XVIX / DAI LP: 0.25 ETH worth of DAI
+        // the user would then be issued 1 lgeTokenWETH and 1 lgeTokenDAI
+        // each lgeToken entitles the user to assets worth ~0.5 ETH
+        // e.g. 1 lgeTokenWETH entitles to the user to 0.25 ETH from the XVIX / ETH LP
+        // and XVIX worth 0.25 ETH, redeemable from the Floor
+        //
+        // if the user wants to redeem an _lgeTokenAmount of 0.8 for lgeTokenWETH
+        // refAmount would be 0.2, 0.8 * 0.25 / 1
+        // the minExpectedAmount would be 0.4, 0.2 * 2
         uint256 minExpectedAmount = refAmount.mul(2);
 
+        // amountToken is the amount of WETH / DAI already retrieved from
+        // removing liquidity
+        // if the price of XVIX has doubled, the amount of WETH / DAI retrieved
+        // would be doubled as well, so no refund of XVIX is required
         if (_amountToken >= minExpectedAmount) {
             return 0;
         }
 
+        // if the price of XVIX has not doubled, some refund would be required
+        // e.g. minExpectedAmount is 0.4 and amountToken is 0.3
+        // in this case, diff would be 0.1
+        // and refundBasisPoints would be 5000, 0.1 * 10,000 / 0.2
+        // so 50% of the XVIX retrieved from removing liquidity would be
+        // burnt to redeem ETH for the user
         uint256 diff = minExpectedAmount.sub(_amountToken);
         uint256 refundBasisPoints = diff.mul(BASIS_POINTS_DIVISOR).div(refAmount);
 
@@ -249,6 +284,11 @@ contract Distributor is ReentrancyGuard {
         if (totalSupply == 0) {
             return 0;
         }
+        // each lgeToken represents a percentage ownership of the
+        // liquidity in the XVIX / WETH or XVIX / DAI Uniswap pair
+        // e.g. if there are 10 lgeTokens and _lgeTokenAmount is 1
+        // then the liquidity owned by that 1 token is
+        // 1 / 10 * (total liquidity owned by this contract)
         return pairBalance.mul(_lgeTokenAmount).div(totalSupply);
     }
 
