@@ -61,7 +61,7 @@ contract Floor is IFloor, ReentrancyGuard {
         return _ethAmount.mul(totalSupply).div(capital);
     }
 
-    function getRefundAmount(uint256 _tokenAmount) public view returns (uint256) {
+    function getRefundAmount(uint256 _tokenAmount) public override view returns (uint256) {
         uint256 totalSupply = IERC20(xvix).totalSupply();
         uint256 amount = capital.mul(_tokenAmount).div(totalSupply);
         return amount.mul(REFUND_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
