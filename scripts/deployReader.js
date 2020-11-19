@@ -2,10 +2,15 @@ const { expandDecimals } = require("../test/shared/utilities")
 const { deployContract, contractAt } = require("./helpers")
 
 async function main() {
-  const factory = await contractAt("UniswapV2Factory", "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f")
-  const reader = await deployContract("Reader", [factory.address])
+  const factory = { address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f" }
+  const xvix = { address: "0xF334c32efc584C05C0a37F0F3e83F7DEADf5a67E" }
+  const dai = { address: "0xad6d458402f60fd3bd25163575031acdce07538d" }
+  const lgeTokenWETH = { address: "0xa754a6147BAE56d21D09e0D34D7013F0C59a9d3d" }
+  const distributor = { address: "0x144A32B2A0c77E81a9bC206BaA0964e2603a3CAD" }
+  const reader = await deployContract("Reader", [factory.address, xvix.address, dai.address,
+    lgeTokenWETH.address, distributor.address])
 
-  return { factory, reader }
+  return { reader }
 }
 
 main()

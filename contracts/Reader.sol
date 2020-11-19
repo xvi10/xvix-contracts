@@ -10,9 +10,23 @@ contract Reader {
     using SafeMath for uint256;
 
     address public immutable factory;
+    address public immutable xvix;
+    address public immutable dai;
+    address public immutable lgeTokenWETH;
+    address public immutable distributor;
 
-    constructor(address _factory) public {
+    constructor(
+        address _factory,
+        address _xvix,
+        address _dai,
+        address _lgeTokenWETH,
+        address _distributor
+    ) public {
         factory = _factory;
+        xvix = _xvix;
+        dai = _dai;
+        lgeTokenWETH = _lgeTokenWETH;
+        distributor = _distributor;
     }
 
     function getPoolAmounts(
@@ -31,5 +45,20 @@ contract Reader {
         uint256 pool0 = balance0.mul(accountBalance).div(supply);
         uint256 pool1 = balance1.mul(accountBalance).div(supply);
         return (pool0, pool1, balance0, balance1, supply);
+    }
+
+    function getLGEAmounts(address _account) public view returns (uint256, uint256, uint256, uint256) {
+        uint256 accountBalance = IERC20(lgeTokenWETH).balanceOf(_account);
+        uint256 supply = IERC20(lgeTokenWETH).totalSupply();
+        if (supply == 0) {
+            return (0, 0, 0, 0);
+        }
+
+        return (
+            accountBalance,
+            distributor.balance.mul(accountBalance).div(supply),
+            IERC20(dai).balanceOf(distributor).mul(accountBalance).div(supply),
+            IERC20(xvix).balanceOf(distributor).mul(accountBalance).div(supply)
+        );
     }
 }

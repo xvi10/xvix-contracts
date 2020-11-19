@@ -1,3 +1,11 @@
+async function sendTxn(txnPromise, label) {
+  const txn = await txnPromise
+  console.info(`Sending ${label}...`)
+  await txn.wait()
+  console.info(`... Sent!`)
+  return txn
+}
+
 async function deployContract(name, args) {
   const contractFactory = await ethers.getContractFactory(name);
   const contract = await contractFactory.deploy(...args);
@@ -12,4 +20,4 @@ async function contractAt(name, address) {
   return await contractFactory.attach(address);
 }
 
-module.exports = { deployContract, contractAt }
+module.exports = { sendTxn, deployContract, contractAt }
