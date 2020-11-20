@@ -16,8 +16,8 @@ async function main() {
   const fund = { address: accounts[0] }
   const now = parseInt(Date.now() / 1000)
   const govHandoverTime = now + 7 * 24 * 60 * 60
-  const lgeEndTime = now + 5 * 60
-  const lpUnlockTime = now + 10 * 60
+  const lgeEndTime = now + 24 * 60 * 60
+  const lpUnlockTime = now + 2 * 24 * 60 * 60
   const initialSupply = expandDecimals(100000, 18)
   const maxSupply = expandDecimals(200000, 18)
   const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
@@ -64,7 +64,10 @@ async function main() {
 
   await sendTxn(xvix.transfer(distributor.address, initialSupply), "xvix.transfer(distributor, initialSupply)");
 
-  return { xvix, weth, dai, router, factory, pairs, floor, minter, distributor, fund }
+  const reader = await deployContract("Reader", [factory.address, xvix.address, dai.address,
+    lgeTokenWETH.address, distributor.address, floor.address])
+
+  return { xvix, weth, dai, router, factory, pairs, floor, minter, distributor, fund, reader }
 }
 
 main()
