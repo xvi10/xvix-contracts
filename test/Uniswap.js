@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract, contractAt } = require("./shared/fixtures")
-const { expandDecimals, increaseTime, mineBlock } = require("./shared/utilities")
+const { expandDecimals, increaseTime, mineBlock, reportGasUsed } = require("./shared/utilities")
 const { getRebaseTime } = require("./shared/xvix")
 const { addLiquidityETH, buyTokens, sellTokensWithFee,
   removeLiquidityETHWithFee } = require("./shared/uniswap")
@@ -44,8 +44,9 @@ describe("Uniswap", function () {
       tokenAmount: expandDecimals(100, 18), ethAmount: expandDecimals(40, 18) })
 
     expect(await xvix.balanceOf(receiver.address)).eq(0)
-    await buyTokens({ router, wallet, receiver, weth, token: xvix,
+    const tx = await buyTokens({ router, wallet, receiver, weth, token: xvix,
       ethAmount: expandDecimals(1, 18) })
+    await reportGasUsed(provider, tx, "buyTokens gas used")
 
     expect(await xvix.balanceOf(receiver.address)).eq("2407627204429592409")
   })
