@@ -125,6 +125,10 @@ contract Distributor is ReentrancyGuard {
         _addLiquidityETH(_deadline, amountXVIX);
         _addLiquidityDAI(_deadline, amountXVIX);
 
+        // for simplicity, assume that the minter starts with the exact number of XVIX tokens
+        // as the Distributor
+        // initializing the minter with the ethReceived value will let it have the same
+        // starting price as the XVIX / ETH Uniswap pair
         IMinter(minter).enableMint(ethReceived);
 
         emit EndLGE();
