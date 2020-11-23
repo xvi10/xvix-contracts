@@ -7,8 +7,8 @@ const { getRebaseTime, expectTransferConfig } = require("./shared/xvix")
 
 use(solidity)
 
-describe("XVIX", function() {
-  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
+describe("XVIX", function () {
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C" }
   const provider = waffle.provider
   const [wallet, user0, user1, user2] = provider.getWallets()
   let xvix
@@ -276,7 +276,6 @@ describe("XVIX", function() {
     await xvixMock.connect(user1).mint(user0.address, "7")
     expect(await xvixMock.balanceOf(user0.address)).eq("7")
     expect(await xvixMock.totalSupply()).eq("17")
-
 
     await expect(xvixMock.connect(user0).toast("2"))
       .to.be.revertedWith("XVIX: forbidden")
@@ -725,6 +724,7 @@ describe("XVIX", function() {
 
   it("applies transfer configs", async () => {
     await xvix.setDefaultTransferConfig(100, 10, 200, 20)
+    await xvix.setTransferConfig(user1.address, 200, 20, 400, 15)
 
     expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(1000, 18))
     expect(await xvix.balanceOf(user0.address)).eq("0")
@@ -736,5 +736,31 @@ describe("XVIX", function() {
     expect(await xvix.balanceOf(user0.address)).eq("97800000000000000000") // 97.8, 100 - 2.2
     expect(await xvix.balanceOf(fund.address)).eq("300000000000000000") // 0.3, 0.3% of 100
     expect(await xvix.totalSupply()).eq("997000000000000000000") // 997, 1000 - 3
+
+    await xvix.transfer(user1.address, expandDecimals(100, 18))
+    expect(await xvix.balanceOf(wallet.address)).eq("797800000000000000000") // 797.8, 798.9 - 1.1
+    expect(await xvix.balanceOf(user1.address)).eq("97800000000000000000") // 97.8, 100 - 2.2
+    expect(await xvix.balanceOf(fund.address)).eq("600000000000000000") // 0.6, 0.3 + 0.3
+    expect(await xvix.totalSupply()).eq("994000000000000000000") // 994, 997 - 3
+
+    await xvix.connect(user1).transfer(user2.address, expandDecimals(10, 18))
+    expect(await xvix.balanceOf(wallet.address)).eq("797800000000000000000") // 797.8, no change
+    expect(await xvix.balanceOf(user1.address)).eq("87580000000000000000") // 87.58, 87.8 - 0.22
+    expect(await xvix.balanceOf(user2.address)).eq("9585000000000000000") // 9.585, 10 - 0.415
+    expect(await xvix.balanceOf(fund.address)).eq("635000000000000000") // 0.635, 0.3 + 0.3 + 0.035
+    expect(await xvix.totalSupply()).eq("993400000000000000000") // 993.4, 994 - 0.6
+  })
+
+  it("updates nextRebaseTime", async () => {
+    const rebaseTime = await xvix.nextRebaseTime()
+    const expected = rebaseTime.add(60 * 60)
+    expect(rebaseTime).gt(0)
+    expect(rebaseTime.mod(60 * 60)).eq(0)
+    await increaseTime(provider, 60 * 60 + 10)
+    await mineBlock(provider)
+    xvix.transfer(user1.address, 1)
+
+    expect((await xvix.nextRebaseTime()).mod(60 * 60)).eq(0)
+    expect(await xvix.nextRebaseTime()).eq(expected)
   })
 })

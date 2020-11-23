@@ -25,6 +25,7 @@ contract Distributor is ReentrancyGuard {
     uint256 public lgeEndTime;
     uint256 public lpUnlockTime;
     bool public lgeIsActive;
+    uint256 public ethReceived;
 
     address public xvix;
     address public weth;
@@ -99,6 +100,7 @@ contract Distributor is ReentrancyGuard {
 
         ILGEToken(lgeTokenWETH).mint(_receiver, msg.value);
         ILGEToken(lgeTokenDAI).mint(_receiver, msg.value);
+        ethReceived = ethReceived.add(msg.value);
 
         emit Join(_receiver, msg.value);
     }
@@ -123,7 +125,7 @@ contract Distributor is ReentrancyGuard {
         _addLiquidityETH(_deadline, amountXVIX);
         _addLiquidityDAI(_deadline, amountXVIX);
 
-        IMinter(minter).enableMint(ILGEToken(lgeTokenWETH).refBalance());
+        IMinter(minter).enableMint(ethReceived);
 
         emit EndLGE();
     }

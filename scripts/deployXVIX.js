@@ -39,16 +39,18 @@ async function main() {
   const lgeTokenWETH = await deployContract("LGEToken", ["XLGE WETH LP", "XLGE:WETH", distributor.address, weth.address])
   const lgeTokenDAI = await deployContract("LGEToken", ["XLGE DAI LP", "XLGE:DAI", distributor.address, dai.address])
 
-  await sendTxn(distributor.initialize([
-    xvix.address,
-    weth.address,
-    dai.address,
-    lgeTokenWETH.address,
-    lgeTokenDAI.address,
-    floor.address,
-    minter.address,
-    router.address,
-    factory.address],
+  await sendTxn(distributor.initialize(
+    [
+      xvix.address,
+      weth.address,
+      dai.address,
+      lgeTokenWETH.address,
+      lgeTokenDAI.address,
+      floor.address,
+      minter.address,
+      router.address,
+      factory.address
+    ],
     lgeEndTime,
     lpUnlockTime
   ), "distributor.initialize")
@@ -56,13 +58,12 @@ async function main() {
   await sendTxn(xvix.setMinter(minter.address), "setMinter")
   await sendTxn(xvix.setFloor(floor.address), "setFloor")
   await sendTxn(xvix.setDistributor(distributor.address), "setDistributor")
-  await sendTxn(xvix.setFund(fund.address), "setFund")
 
   await sendTxn(xvix.createSafe(distributor.address), "createSafe(distributor)")
   await sendTxn(xvix.createSafe(pairs.xvix.weth.address), "createSafe(xvix/weth pair)")
   await sendTxn(xvix.createSafe(pairs.xvix.dai.address), "createSafe(xvix/dai pair)")
 
-  await sendTxn(xvix.transfer(distributor.address, initialSupply), "xvix.transfer(distributor, initialSupply)");
+  await sendTxn(xvix.transfer(distributor.address, initialSupply), "xvix.transfer(distributor, initialSupply)")
 
   const reader = await deployContract("Reader", [factory.address, xvix.address, dai.address,
     lgeTokenWETH.address, distributor.address, floor.address])

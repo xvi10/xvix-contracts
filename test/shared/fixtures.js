@@ -1,16 +1,15 @@
-const WETH = require("../../artifacts/WETH.json")
 const UniswapV2Pair = require("../../artifacts/UniswapV2Pair.json")
 
-const { expandDecimals, getBlockTime } = require("./utilities")
+const { expandDecimals } = require("./utilities")
 
 async function deployContract(name, args) {
-  const contractFactory = await ethers.getContractFactory(name);
-  return await contractFactory.deploy(...args);
+  const contractFactory = await ethers.getContractFactory(name)
+  return await contractFactory.deploy(...args)
 }
 
 async function contractAt(name, address) {
-  const contractFactory = await ethers.getContractFactory(name);
-  return await contractFactory.attach(address);
+  const contractFactory = await ethers.getContractFactory(name)
+  return await contractFactory.attach(address)
 }
 
 async function printPairBytecode() {
@@ -57,5 +56,6 @@ async function loadFixtures(provider, wallet, distributor) {
 module.exports = {
   deployContract,
   contractAt,
-  loadFixtures
+  loadFixtures,
+  printPairBytecode
 }

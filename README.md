@@ -4,9 +4,9 @@ Contracts for the XVIX system. More info can be found at https://xvix.finance/.
 
 ## XVIX Contracts
 
-- Distributor.sol: LGE coordinator
+- Distributor.sol: XLGE coordinator
 - Floor.sol: Allows XVIX to be burnt for ETH
-- LGEToken.sol: Entitles LGE participants to distributed assets
+- LGEToken.sol: Entitles XLGE participants to distributed assets
 - Minter.sol: Allows XVIX to be minted with ETH
 - Reader.sol: Peripheral contract for retrieving data
 - XVIX.sol: XVIX token contract

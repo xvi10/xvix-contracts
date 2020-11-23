@@ -1,15 +1,15 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
-const { loadFixtures, deployContract, contractAt } = require("./shared/fixtures")
+const { loadFixtures, deployContract } = require("./shared/fixtures")
 const { expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
 const { getRebaseTime } = require("./shared/xvix")
 const { addLiquidityETH } = require("./shared/uniswap")
 
 use(solidity)
 
-describe("Distributor", function() {
+describe("Distributor", function () {
   const provider = waffle.provider
-  const [wallet, user0, user1, user2, user3] = provider.getWallets()
+  const [wallet, user0, user1, user2] = provider.getWallets()
   let distributor
   let lgeTokenWETH
   let lgeTokenDAI
@@ -23,12 +23,11 @@ describe("Distributor", function() {
   let pairs
   let lgeEndTime
   let lpUnlockTime
-  let fund
 
   beforeEach(async () => {
     distributor = await deployContract("Distributor", [])
 
-    const fixtures = await loadFixtures(provider, wallet, distributor, user3)
+    const fixtures = await loadFixtures(provider, wallet, distributor, user2)
     xvix = fixtures.xvix
     weth = fixtures.weth
     dai = fixtures.dai
@@ -37,7 +36,6 @@ describe("Distributor", function() {
     router = fixtures.router
     factory = fixtures.factory
     pairs = fixtures.pairs
-    fund = fixtures.fund
 
     lgeTokenWETH = await deployContract("LGEToken", ["XLGE WETH LP", "XLGE:WETH", distributor.address, weth.address])
     lgeTokenDAI = await deployContract("LGEToken", ["XLGE DAI LP", "XLGE:DAI", distributor.address, dai.address])
@@ -46,16 +44,18 @@ describe("Distributor", function() {
     lgeEndTime = blockTime + 14 * 24 * 60 * 60
     lpUnlockTime = blockTime + 42 * 24 * 60 * 60
 
-    await distributor.initialize([
-      xvix.address,
-      weth.address,
-      dai.address,
-      lgeTokenWETH.address,
-      lgeTokenDAI.address,
-      floor.address,
-      minter.address,
-      router.address,
-      factory.address],
+    await distributor.initialize(
+      [
+        xvix.address,
+        weth.address,
+        dai.address,
+        lgeTokenWETH.address,
+        lgeTokenDAI.address,
+        floor.address,
+        minter.address,
+        router.address,
+        factory.address
+      ],
       lgeEndTime,
       lpUnlockTime
     )
@@ -81,6 +81,9 @@ describe("Distributor", function() {
     // expect(await distributor.path()).eq([weth.address, dai.address])
     expect(await distributor.lgeEndTime()).eq(lgeEndTime)
     expect(await distributor.lpUnlockTime()).eq(lpUnlockTime)
+
+    expect(await lgeTokenWETH.distributor()).eq(distributor.address)
+    expect(await lgeTokenDAI.distributor()).eq(distributor.address)
   })
 
   it("initialize", async () => {
@@ -161,7 +164,11 @@ describe("Distributor", function() {
     expect(await lgeTokenDAI.refBalance()).eq("0")
     expect(await lgeTokenDAI.refSupply()).eq("0")
 
+    expect(await minter.active()).eq(false)
+    expect(await minter.ethReserve()).eq(0)
     await distributor.connect(user0).endLGE(blockTime + 60)
+    expect(await minter.active()).eq(true)
+    expect(await minter.ethReserve()).eq(expandDecimals(1, 18))
 
     // 1 ETH => 200 XVIX
     // 1 ETH => 4500 DAI
@@ -187,7 +194,7 @@ describe("Distributor", function() {
   })
 
   it("removeLiquidityETH, removeLiquidityDAI", async () => {
-    await xvix.setFund(user3.address)
+    await xvix.setFund(user2.address)
     const receiver0 = { address: "0x7182B123AD5F6619B66533A85B6f180462AED05E" }
     const receiver1 = { address: "0x10fd90D8f1543FFF6B8056BCf40dfB39231781c4" }
 
@@ -201,10 +208,41 @@ describe("Distributor", function() {
     await distributor.join(user0.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(1, 18) })
     await distributor.join(user1.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(2, 17) })
 
+    expect(await lgeTokenWETH.totalSupply()).eq("1200000000000000000") // 1.2
+    expect(await lgeTokenDAI.totalSupply()).eq("1200000000000000000") // 1.2
+
     const wethPair = pairs.xvix.weth
     const daiPair = pairs.xvix.dai
 
+    expect(await minter.active()).eq(false)
+    expect(await minter.ethReserve()).eq(0)
+    expect(await provider.getBalance(distributor.address)).eq("300000000000000000") // 0.3 ETH
+    expect(await provider.getBalance(floor.address)).eq("600000000000000000") // 0.6 ETH
+    expect(await provider.getBalance(wethPair.address)).eq(0)
+    expect(await weth.balanceOf(wethPair.address)).eq(0)
+    expect(await weth.balanceOf(daiPair.address)).eq(0)
+    expect(await dai.balanceOf(distributor.address)).eq("1326109841407994541973") // ~1326 DAI
+    expect(await dai.balanceOf(wethPair.address)).eq(0)
+    expect(await dai.balanceOf(daiPair.address)).eq(0)
+    expect(await xvix.balanceOf(distributor.address)).eq("995000000000000000000") // 995, 1000 - 5
+    expect(await xvix.balanceOf(wethPair.address)).eq(0)
+    expect(await xvix.balanceOf(daiPair.address)).eq(0)
+
     await distributor.endLGE(blockTime + 60)
+
+    expect(await minter.active()).eq(true)
+    expect(await minter.ethReserve()).eq("1200000000000000000") // 1.2 ETH
+    expect(await provider.getBalance(distributor.address)).eq(0) // 0.3 ETH sent to XVIX / WETH pair
+    expect(await provider.getBalance(floor.address)).eq("600000000000000000") // 0.6 ETH
+    expect(await provider.getBalance(wethPair.address)).eq(0)
+    expect(await provider.getBalance(wethPair.address)).eq(0)
+    expect(await weth.balanceOf(wethPair.address)).eq("300000000000000000") // 0.3
+    expect(await weth.balanceOf(daiPair.address)).eq(0)
+    expect(await dai.balanceOf(wethPair.address)).eq(0)
+    expect(await dai.balanceOf(daiPair.address)).eq("1326109841407994541973") // ~1326 DAI
+    expect(await xvix.balanceOf(distributor.address)).eq(0)
+    expect(await xvix.balanceOf(wethPair.address)).eq("495012500000000000000") // 495.0125
+    expect(await xvix.balanceOf(daiPair.address)).eq("495012500000000000000") // 495.0125
 
     await increaseTime(provider, await getRebaseTime(provider, xvix, 45 * 24))
     await mineBlock(provider)
@@ -275,15 +313,35 @@ describe("Distributor", function() {
     expect(await xvix.balanceOf(daiPair.address)).eq("610")
 
     expect(await xvix.balanceOf(distributor.address)).eq("0")
-    expect(await xvix.balanceOf(user3.address)).eq("2084926075795882276")
+    expect(await xvix.balanceOf(user2.address)).eq("2084926075795882276")
 
     expect(await provider.getBalance(receiver1.address)).eq("165861132053227734") // ~0.166 ETH
-    await floor.connect(user3).refund(receiver1.address, "2084926075795882276")
+    await floor.connect(user2).refund(receiver1.address, "2084926075795882276")
     expect(await provider.getBalance(receiver1.address)).eq("171238487716821361") // ~0.171 ETH
 
-    expect(await xvix.balanceOf(user3.address)).eq("0")
+    expect(await xvix.balanceOf(user2.address)).eq("0")
     expect(await xvix.totalSupply()).eq("41143") // 40532 + 610 = 41142
 
     expect(await provider.getBalance(floor.address)).eq("597483962621633")
+  })
+
+  it("LGEToken.mint", async () => {
+    await expect(lgeTokenWETH.mint(user0.address, 1))
+      .to.be.revertedWith("LGEToken: forbidden")
+  })
+
+  it("LGEToken.burn", async () => {
+    await expect(lgeTokenWETH.burn(user0.address, 1))
+      .to.be.revertedWith("LGEToken: forbidden")
+  })
+
+  it("LGEToken.setRefBalance", async () => {
+    await expect(lgeTokenWETH.setRefBalance(1))
+      .to.be.revertedWith("LGEToken: forbidden")
+  })
+
+  it("LGEToken.setRefSupply", async () => {
+    await expect(lgeTokenWETH.setRefSupply(1))
+      .to.be.revertedWith("LGEToken: forbidden")
   })
 })

@@ -1,5 +1,4 @@
-const { expandDecimals } = require("../test/shared/utilities")
-const { deployContract, contractAt } = require("./helpers")
+const { deployContract } = require("./helpers")
 
 async function main() {
   const factory = { address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f" }

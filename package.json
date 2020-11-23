@@ -15,6 +15,11 @@
     "@nomiclabs/buidler-waffle": "^2.1.0",
     "buidler-gas-reporter": "^0.1.4",
     "chai": "^4.2.0",
+    "eslint": "^7.14.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
     "ethereum-waffle": "^3.1.1",
     "ethers": "^5.0.14"
   },

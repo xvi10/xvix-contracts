@@ -6,10 +6,10 @@ const { getRebaseTime } = require("./shared/xvix")
 
 use(solidity)
 
-describe("Floor", function() {
-  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
+describe("Floor", function () {
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C" }
   const provider = waffle.provider
-  const [wallet, user0, user1] = provider.getWallets()
+  const [wallet] = provider.getWallets()
   let xvix
   let floor
   let minter
@@ -54,6 +54,7 @@ describe("Floor", function() {
     const receiver = "0xb47096ef9c4b2784025179ab2aea26b610e2f89f"
     const burnAmount = expandDecimals(10, 18)
     expect(await floor.getRefundAmount(burnAmount)).eq("0")
+    expect(await minter.tokenReserve()).eq(expandDecimals(1000, 18))
 
     await wallet.sendTransaction({ to: floor.address, value: expandDecimals(300, 18) })
     expect(await floor.capital()).eq(expandDecimals(300, 18))
@@ -67,10 +68,12 @@ describe("Floor", function() {
 
     expect(await floor.capital()).eq("297300000000000000000") // 300 - 2.7
     expect(await floor.getRefundAmount(burnAmount)).eq("2702727272727272727") // 10 / 990 * 297.3 * 0.9
+    expect(await minter.tokenReserve()).eq(expandDecimals(1010, 18))
 
     await floor.refund(receiver, burnAmount)
     expect(await xvix.balanceOf(wallet.address)).eq(expandDecimals(980, 18))
     expect(await provider.getBalance(receiver)).eq("5402727272727272727")
+    expect(await minter.tokenReserve()).eq(expandDecimals(1020, 18))
   })
 
   it("refund increases after rebase", async () => {

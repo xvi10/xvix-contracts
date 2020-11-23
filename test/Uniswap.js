@@ -8,10 +8,10 @@ const { addLiquidityETH, buyTokens, sellTokensWithFee,
 
 use(solidity)
 
-describe("Uniswap", function() {
-  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C"}
+describe("Uniswap", function () {
+  const distributor = { address: "0x92e235D65A9E3c5231688e70dc3fF0c91d17cf8C" }
   const provider = waffle.provider
-  const [wallet, user0, user1] = provider.getWallets()
+  const [wallet] = provider.getWallets()
   let xvix
   let weth
   let router
@@ -78,7 +78,6 @@ describe("Uniswap", function() {
 
   it("sellTokensWithFee", async () => {
     const receiver = { address: "0xdd2535db6540b0e48366e2112aac1703566bd2d3" }
-    const pair = pairs.xvix.weth
     await addLiquidityETH({ router, wallet, token: xvix,
       tokenAmount: expandDecimals(100, 18), ethAmount: expandDecimals(40, 18) })
 
