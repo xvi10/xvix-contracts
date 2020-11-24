@@ -38,6 +38,20 @@ describe("Uniswap", function () {
     expect(await weth.balanceOf(pair.address)).eq(expandDecimals(40, 18))
   })
 
+  it("addLiquidityETH with existing WETH", async () => {
+    const pair = pairs.xvix.weth
+    await weth.deposit({ value: expandDecimals(50, 18) })
+    await weth.transfer(pair.address, expandDecimals(50, 18))
+
+    expect(await xvix.balanceOf(pair.address)).eq(0)
+    expect(await weth.balanceOf(pair.address)).eq(expandDecimals(50, 18))
+    await addLiquidityETH({ router, wallet, token: xvix,
+      tokenAmount: expandDecimals(100, 18), ethAmount: expandDecimals(40, 18) })
+
+    expect(await xvix.balanceOf(pair.address)).eq("99500000000000000000")
+    expect(await weth.balanceOf(pair.address)).eq(expandDecimals(90, 18))
+  })
+
   it("buyTokens", async () => {
     const receiver = { address: "0xe242271f229e4a7e3f3d555d5b0f86a412f24123" }
     await addLiquidityETH({ router, wallet, token: xvix,

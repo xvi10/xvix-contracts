@@ -127,8 +127,13 @@ contract Distributor is ReentrancyGuard {
 
         // for simplicity, assume that the minter starts with the exact number of XVIX tokens
         // as the Distributor
-        // initializing the minter with the ethReceived value will let it have the same
-        // starting price as the XVIX / ETH Uniswap pair
+        // 1/2 of the XVIX owned by the Distributor and 1/4 of the ETH received by the Distributor
+        // is sent to the XVIX / ETH pair
+        // this would give a price of (total XVIX) / (1/2 ETH received)
+        //
+        // initializing the minter with the ethReceived value will let it have a
+        // starting price of (total XVIX) / (ETH received)
+        // which would be twice the starting price of the XVIX / ETH Uniswap pair
         IMinter(minter).enableMint(ethReceived);
 
         emit EndLGE();

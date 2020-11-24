@@ -1,15 +1,15 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
+const { bigNumberify, expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
 const { getRebaseTime } = require("./shared/xvix")
-const { addLiquidityETH } = require("./shared/uniswap")
+const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 
 use(solidity)
 
 describe("Distributor", function () {
   const provider = waffle.provider
-  const [wallet, user0, user1, user2] = provider.getWallets()
+  const [wallet, user0, user1, user2, user3] = provider.getWallets()
   let distributor
   let lgeTokenWETH
   let lgeTokenDAI
@@ -127,7 +127,7 @@ describe("Distributor", function () {
   })
 
   it("endLGE", async () => {
-    await xvix.transfer(distributor.address, expandDecimals(100, 18))
+    await xvix.transfer(distributor.address, expandDecimals(1000, 18))
 
     await dai.mint(wallet.address, expandDecimals(90000, 18))
     await addLiquidityETH({ router, wallet, token: dai,
@@ -164,6 +164,10 @@ describe("Distributor", function () {
     expect(await lgeTokenDAI.refBalance()).eq("0")
     expect(await lgeTokenDAI.refSupply()).eq("0")
 
+    await expect(minter.mint(wallet.address))
+      .to.be.revertedWith("Minter: not active")
+
+    expect(await floor.getRefundAmount(expandDecimals(1000, 18))).eq("451943991187955960") // ~0.451
     expect(await minter.active()).eq(false)
     expect(await minter.ethReserve()).eq(0)
     await distributor.connect(user0).endLGE(blockTime + 60)
@@ -191,6 +195,22 @@ describe("Distributor", function () {
 
     await expect(distributor.connect(user0).endLGE(blockTime + 60))
       .to.be.revertedWith("Distributor: LGE already ended")
+
+    expect(await xvix.balanceOf(user2.address)).eq(0)
+    // 1000 XVIX and 1 ETH was sent to the distributor
+    // 500 XVIX and 0.25 ETH would be sent to the XVIX / ETH Uniswap pair
+    // price in the Uniswap pair would be ~2000 XVIX / 1 ETH
+    await buyTokens({ router, wallet, receiver: user2, weth,
+      token: xvix, ethAmount: "1000000000000000" }) // 0.001 ETH
+    expect(await xvix.balanceOf(user2.address)).eq("1956437029874859062") // ~1.956 XVIX, ~0.001 * 2000
+
+    expect(await xvix.balanceOf(user3.address)).eq(0)
+    // the minter has a tokenReserve of 1000 XVIX
+    // the minter would be initialized with an ethReserve of 1 ETH
+    // price in the minter would be ~1000 XVIX / 1 ETH
+    // it will be slightly more because some XVIX has already been burnt during setup
+    await minter.mint(user3.address, { value: "1000000000000000" }) // 0.001 ETH
+    expect(await xvix.balanceOf(user3.address)).eq("1007580772641918183") // ~1.007 XVIX, 0.001 * 1000
   })
 
   it("removeLiquidityETH, removeLiquidityDAI", async () => {
@@ -214,6 +234,7 @@ describe("Distributor", function () {
     const wethPair = pairs.xvix.weth
     const daiPair = pairs.xvix.dai
 
+    expect(await floor.getRefundAmount(expandDecimals(1000, 18))).eq("542332027719192527") // ~0.542
     expect(await minter.active()).eq(false)
     expect(await minter.ethReserve()).eq(0)
     expect(await provider.getBalance(distributor.address)).eq("300000000000000000") // 0.3 ETH
@@ -250,11 +271,15 @@ describe("Distributor", function () {
 
     blockTime = await getBlockTime(provider)
 
+    expect(await xvix.totalSupply()).eq("989440837331829144418") // ~989.44
+    expect(await minter.tokenReserve()).eq("1010559162668170855582") // ~1010.56
     expect(await provider.getBalance(receiver0.address)).eq(0)
     expect(await xvix.balanceOf(receiver0.address)).eq(0)
     await distributor.connect(user0).removeLiquidityETH(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
     expect(await provider.getBalance(receiver0.address)).eq("236879911258169118") // ~0.237 ETH
     expect(await xvix.balanceOf(receiver0.address)).eq(0)
+    expect(await xvix.totalSupply()).eq("783741776025252666133") // ~783.74
+    expect(await minter.tokenReserve()).eq("1216258223974747333867") // ~1216.26
 
     await distributor.connect(user0).removeLiquidityETH(expandDecimals(5, 17), 0, 0, receiver0.address, blockTime + 60)
     expect(await provider.getBalance(receiver0.address)).eq("476813362730091822") // ~0.477 ETH
