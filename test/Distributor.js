@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { bigNumberify, expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
+const { expandDecimals, increaseTime, mineBlock, getBlockTime } = require("./shared/utilities")
 const { getRebaseTime } = require("./shared/xvix")
 const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 
@@ -346,8 +346,46 @@ describe("Distributor", function () {
 
     expect(await xvix.balanceOf(user2.address)).eq("0")
     expect(await xvix.totalSupply()).eq("41143") // 40532 + 610 = 41142
+    expect(await xvix.maxSupply()).eq(expandDecimals(2000, 18))
 
     expect(await provider.getBalance(floor.address)).eq("597483962621633")
+  })
+
+  it("removeLiquidityETH, removeLiquidityDAI when XVIX price increases", async () => {
+    await xvix.setFund(user2.address)
+    const receiver0 = { address: "0xd255aa73efad1e005aea0933580b38a5947ea6b8" }
+
+    await xvix.transfer(distributor.address, expandDecimals(1000, 18))
+
+    await dai.mint(wallet.address, expandDecimals(90000, 18))
+    await addLiquidityETH({ router, wallet, token: dai,
+      tokenAmount: expandDecimals(90000, 18), ethAmount: expandDecimals(20, 18) })
+
+    let blockTime = await getBlockTime(provider)
+    await distributor.join(user0.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(1, 18) })
+    await distributor.join(user1.address, expandDecimals(10, 18), blockTime + 60, { value: expandDecimals(2, 17) })
+
+    await increaseTime(provider, 42 * 24 * 60 * 60 + 10)
+    await mineBlock(provider)
+    await xvix.rebase()
+
+    blockTime = await getBlockTime(provider)
+    await distributor.endLGE(blockTime + 60)
+
+    // the XVIX / ETH Uniswap pair has 0.3 ETH
+    // a buy of 0.03 ETH would raise the price by 21%
+    await buyTokens({ router, wallet, receiver: wallet, weth, token: xvix, ethAmount: "30000000000000000" }) // 0.03 ETH
+
+    expect(await provider.getBalance(receiver0.address)).eq(0)
+    const totalSupply = await xvix.totalSupply()
+    const maxSupply = await xvix.maxSupply()
+    await distributor.connect(user0).removeLiquidityETH(expandDecimals(1, 18), 0, 0, receiver0.address, blockTime + 60)
+    const nextTotalSupply = await xvix.totalSupply()
+    const nextMaxSupply = await xvix.maxSupply()
+    expect(await provider.getBalance(receiver0.address)).eq("458296491001592633")
+    expect(totalSupply.sub(nextTotalSupply)).eq("374849194666727258489") // ~374.85
+    expect(maxSupply.sub(nextMaxSupply)).eq("37323621404322387892") // ~37.32
+    expect(nextMaxSupply).eq("1962676378595677612108") // ~1962.67
   })
 
   it("LGEToken.mint", async () => {
