@@ -6,10 +6,12 @@ async function sendTxn(txnPromise, label) {
   return txn
 }
 
-async function deployContract(name, args) {
+async function deployContract(name, args, label) {
+  let info = name
+  if (label) { info = name + ":" + label }
   const contractFactory = await ethers.getContractFactory(name)
   const contract = await contractFactory.deploy(...args)
-  console.info(`Deploying ${name} to ${contract.address}...`)
+  console.info(`Deploying ${info} to ${contract.address}...`)
   await contract.deployTransaction.wait()
   console.info("... Completed!")
   return contract

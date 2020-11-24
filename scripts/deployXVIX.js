@@ -16,8 +16,8 @@ async function main() {
   const fund = { address: accounts[0] }
   const now = parseInt(Date.now() / 1000)
   const govHandoverTime = now + 7 * 24 * 60 * 60
-  const lgeEndTime = now + 24 * 60 * 60
-  const lpUnlockTime = now + 2 * 24 * 60 * 60
+  const lgeEndTime = now + 14 * 24 * 60 * 60
+  const lpUnlockTime = now + 28 * 24 * 60 * 60
   const initialSupply = expandDecimals(100000, 18)
   const maxSupply = expandDecimals(200000, 18)
   const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
@@ -36,8 +36,8 @@ async function main() {
   const floor = await deployContract("Floor", [xvix.address])
   const minter = await deployContract("Minter", [xvix.address, floor.address, distributor.address])
 
-  const lgeTokenWETH = await deployContract("LGEToken", ["XLGE WETH LP", "XLGE:WETH", distributor.address, weth.address])
-  const lgeTokenDAI = await deployContract("LGEToken", ["XLGE DAI LP", "XLGE:DAI", distributor.address, dai.address])
+  const lgeTokenWETH = await deployContract("LGEToken", ["XLGE WETH LP", "XLGE:WETH", distributor.address, weth.address], "XLGE:WETH")
+  const lgeTokenDAI = await deployContract("LGEToken", ["XLGE DAI LP", "XLGE:DAI", distributor.address, dai.address], "XLGE:DAI")
 
   await sendTxn(distributor.initialize(
     [
