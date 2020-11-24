@@ -11,22 +11,19 @@ async function createPair(factory, token0, token1, label) {
 }
 
 async function main() {
-  const provider = waffle.provider
-  const accounts = await provider.listAccounts()
-  const fund = { address: accounts[0] }
   const now = parseInt(Date.now() / 1000)
-  const govHandoverTime = now + 7 * 24 * 60 * 60
+  const govHandoverTime = now + 90 * 24 * 60 * 60
   const lgeEndTime = now + 14 * 24 * 60 * 60
   const lpUnlockTime = now + 28 * 24 * 60 * 60
   const initialSupply = expandDecimals(100000, 18)
   const maxSupply = expandDecimals(200000, 18)
   const xvix = await deployContract("XVIX", [initialSupply, maxSupply, govHandoverTime])
-  const weth = await contractAt("WETH", "0xc778417e063141139fce010982780140aa0cd5ab")
-  const dai = await contractAt("DAI", "0xad6d458402f60fd3bd25163575031acdce07538d")
+  const weth = await contractAt("WETH", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+  const dai = await contractAt("DAI", "0x6b175474e89094c44da98b954eedeac495271d0f")
 
   const pairs = { xvix: {}, weth: {} }
 
-  const factory = await contractAt("UniswapV2Factory", "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f")
+  const factory = await contractAt("UniswapV2Factory", "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f")
   const router = await contractAt("UniswapV2Router", "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
 
   pairs.xvix.weth = await createPair(factory, xvix, weth, "createPair(xvix, weth)")
@@ -68,7 +65,7 @@ async function main() {
   const reader = await deployContract("Reader", [factory.address, xvix.address, dai.address,
     lgeTokenWETH.address, distributor.address, floor.address])
 
-  return { xvix, weth, dai, router, factory, pairs, floor, minter, distributor, fund, reader }
+  return { xvix, weth, dai, router, factory, pairs, floor, minter, distributor, reader }
 }
 
 main()

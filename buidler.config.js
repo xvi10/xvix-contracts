@@ -1,7 +1,8 @@
-const { ROPSTEN_URL, ROPSTEN_DEPLOY_KEY } = require("./env.json")
+const { ROPSTEN_URL, ROPSTEN_DEPLOY_KEY, MAINNET_URL, MAINNET_DEPLOY_KEY } = require("./env.json")
 
 usePlugin("@nomiclabs/buidler-waffle")
 usePlugin("@nomiclabs/buidler-solhint")
+usePlugin("@nomiclabs/buidler-etherscan")
 // usePlugin("buidler-gas-reporter")
 
 // This is a sample Buidler task. To learn how to create your own go to
@@ -20,12 +21,19 @@ task("accounts", "Prints the list of accounts", async () => {
 // Go to https://buidler.dev/config/ to learn more
 module.exports = {
   networks: {
-    buidlerevm: {
-    },
+    buidlerevm: {},
     ropsten: {
       url: ROPSTEN_URL,
       accounts: [ROPSTEN_DEPLOY_KEY]
+    },
+    mainnet: {
+      url: MAINNET_URL,
+      gasPrice: 119000000000,
+      accounts: [MAINNET_DEPLOY_KEY]
     }
+  },
+  etherscan: {
+    apiKey: "C74BMX4GKPUM7QFV9CWNN7UQ65GAPX6A15"
   },
   solc: {
     version: "0.6.12",
