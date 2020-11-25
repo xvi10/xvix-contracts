@@ -1,4 +1,5 @@
-const { ROPSTEN_URL, ROPSTEN_DEPLOY_KEY, MAINNET_URL, MAINNET_DEPLOY_KEY } = require("./env.json")
+const { ROPSTEN_URL, ROPSTEN_DEPLOY_KEY, MAINNET_URL, MAINNET_DEPLOY_KEY,
+  ETHERSCAN_API_KEY } = require("./env.json")
 
 usePlugin("@nomiclabs/buidler-waffle")
 usePlugin("@nomiclabs/buidler-solhint")
@@ -33,7 +34,7 @@ module.exports = {
     }
   },
   etherscan: {
-    apiKey: "C74BMX4GKPUM7QFV9CWNN7UQ65GAPX6A15"
+    apiKey: ETHERSCAN_API_KEY
   },
   solc: {
     version: "0.6.12",
