@@ -8,7 +8,6 @@ import "./libraries/token/IERC20.sol";
 import "./interfaces/IXVIX.sol";
 import "./interfaces/IFloor.sol";
 
-
 contract XVIX is IERC20, IXVIX {
     using SafeMath for uint256;
 
@@ -120,7 +119,7 @@ contract XVIX is IERC20, IXVIX {
         _setNextRebaseTime();
     }
 
-    function setGov(address _gov) public onlyGov {
+    function setGov(address _gov) public override onlyGov {
         gov = _gov;
         emit GovChange(_gov);
     }
