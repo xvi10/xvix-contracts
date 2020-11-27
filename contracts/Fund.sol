@@ -29,7 +29,7 @@ contract Fund {
         receiverB = _receiverB;
     }
 
-    function split(address _token, uint256 _amount) public {
+    function withdraw(address _token, uint256 _amount) public {
         require(msg.sender == receiverA || msg.sender == receiverB, "Fund: forbidden");
         uint256 amountA = _amount.mul(FEE_SPLIT).div(BASIS_POINTS_DIVISOR);
         uint256 amountB = _amount.sub(amountA);
