@@ -1,0 +1,5 @@
+Link to audit: https://github.com/xvi10/xvix-contracts/blob/master/audits/V%C3%AD%C3%B0arr%20the%20Auditor%20-%20XVIX%20Audit.pdf
+
+The security audit found no critical issues, however, concerns were raised about possible exploits using flash loans.
+
+To address these concerns, we performed a detailed analysis regarding this form of attack: https://xvix.medium.com/xvix-audit-a4467cb82a85
