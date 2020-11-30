@@ -14,8 +14,6 @@ import "./interfaces/IFloor.sol";
 contract Minter is IMinter, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant BASIS_POINTS_DIVISOR = 10000;
-
     address public immutable xvix;
     address public immutable floor;
     address public immutable distributor;
@@ -43,7 +41,7 @@ contract Minter is IMinter, ReentrancyGuard {
         ethReserve = _ethReserve;
     }
 
-    function mint(address _receiver) public payable nonReentrant {
+    function mint(address _receiver) public override payable nonReentrant {
         require(active, "Minter: not active");
         require(ethReserve > 0, "Minter: insufficient eth reserve");
         require(msg.value > 0, "Minter: insufficient value");
