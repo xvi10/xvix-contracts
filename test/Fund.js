@@ -1,7 +1,6 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { expandDecimals } = require("./shared/utilities")
 
 use(solidity)
 
