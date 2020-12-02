@@ -1,12 +1,12 @@
 const { deployContract } = require("./helpers")
 
 async function main() {
-  const factory = { address: "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f" }
-  const xvix = { address: "0xF334c32efc584C05C0a37F0F3e83F7DEADf5a67E" }
-  const dai = { address: "0xad6d458402f60fd3bd25163575031acdce07538d" }
-  const lgeTokenWETH = { address: "0xa754a6147BAE56d21D09e0D34D7013F0C59a9d3d" }
-  const distributor = { address: "0x144A32B2A0c77E81a9bC206BaA0964e2603a3CAD" }
-  const floor = { address: "0x43880031953B3cF5142376bb46D6d9b5A90d684D" }
+  const factory = { address: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f" }
+  const xvix = { address: "0x4bAE380B5D762D543d426331b8437926443ae9ec" }
+  const dai = { address: "0x6b175474e89094c44da98b954eedeac495271d0f" }
+  const lgeTokenWETH = { address: "0xc278a41fc6cf7f488aea2d0ab321cc77128931d5" }
+  const distributor = { address: "0x2b35cccd8a0bdd17ec2f7e28d8929723826f13d5" }
+  const floor = { address: "0x40ed3699c2ffe43939ecf2f3d11f633b522820ad" }
   const reader = await deployContract("Reader", [factory.address, xvix.address, dai.address,
     lgeTokenWETH.address, distributor.address, floor.address])
 

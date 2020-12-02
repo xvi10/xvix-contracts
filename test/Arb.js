@@ -1,7 +1,7 @@
 const { expect, use } = require("chai")
 const { solidity } = require("ethereum-waffle")
 const { loadFixtures, deployContract } = require("./shared/fixtures")
-const { expandDecimals, bigNumberify } = require("./shared/utilities")
+const { expandDecimals, bigNumberify, reportGasUsed } = require("./shared/utilities")
 const { addLiquidityETH, buyTokens } = require("./shared/uniswap")
 const { getMinterArbComponents } = require("./shared/arb")
 
@@ -87,7 +87,8 @@ describe("Arb", function () {
 
     expect(await provider.getBalance(lendingPool.address)).eq("29500000000000000000")
     expect(await provider.getBalance(receiver.address)).eq("0")
-    await arb.rebalanceMinter(dxi1)
+    const tx = await arb.rebalanceMinter(dxi1)
+    reportGasUsed(provider, tx, "rebalanceMinter gas used")
     expect(await provider.getBalance(lendingPool.address)).eq("29588470864430758501") // 29.5 + fees (0.3% of 29.49...)
     expect(await provider.getBalance(receiver.address)).eq("43364882956686346300") // ~43.3, receiver earns the profits
     expect(await provider.getBalance(arb.address)).eq("0")
