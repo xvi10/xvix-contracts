@@ -9,8 +9,8 @@ contract Fund {
     using SafeMath for uint256;
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
-    uint256 public constant FEE_SPLIT_A = 6500; // 65%
-    uint256 public constant FEE_SPLIT_B = 2700; // 27%
+    uint256 public constant FEE_SPLIT_A = 6700; // 67%
+    uint256 public constant FEE_SPLIT_B = 3000; // 30%
 
     address public receiverA;
     address public receiverB;
