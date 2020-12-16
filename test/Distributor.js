@@ -27,7 +27,7 @@ describe("Distributor", function () {
   beforeEach(async () => {
     distributor = await deployContract("Distributor", [])
 
-    const fixtures = await loadFixtures(provider, wallet, distributor, user2)
+    const fixtures = await loadFixtures(provider, wallet, distributor)
     xvix = fixtures.xvix
     weth = fixtures.weth
     dai = fixtures.dai
