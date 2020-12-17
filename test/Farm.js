@@ -13,6 +13,7 @@ describe("Farm", function () {
   let router
   let xvix
   let stakingToken
+  let rewardToken
   let farm
   let farmDistributor
 
@@ -21,13 +22,38 @@ describe("Farm", function () {
     router = fixtures.router
     xvix = fixtures.xvix
     stakingToken = fixtures.pairs.xvix.weth
-    farmDistributor = await deployContract("FarmDistributor", [])
-    farm = await deployContract("Farm", [stakingToken.address, farmDistributor.address])
+    rewardToken = fixtures.dai
+    farmDistributor = await deployContract("FarmDistributor", [rewardToken.address])
+    farm = await deployContract("Farm", [stakingToken.address, rewardToken.address])
+    await farm.setFarmDistributor(farmDistributor.address)
+    await rewardToken.mint(wallet.address, 10000)
   })
 
   it("inits", async () => {
+    expect(await farm.rewardToken()).eq(rewardToken.address)
     expect(await farm.stakingToken()).eq(stakingToken.address)
-    expect(await farm.farmDistributor()).eq(farmDistributor.address)
+  })
+
+  it("setGov", async () => {
+    await expect(farm.connect(user0).setGov(user1.address))
+      .to.be.revertedWith("Farm: forbidden")
+
+    await farm.setGov(user0.address)
+    expect(await farm.gov()).eq(user0.address)
+
+    await farm.connect(user0).setGov(user1.address)
+    expect(await farm.gov()).eq(user1.address)
+  })
+
+  it("setFarmDistributor", async () => {
+    await expect(farm.connect(user0).setFarmDistributor(user1.address))
+      .to.be.revertedWith("Farm: forbidden")
+
+    await farm.setGov(user0.address)
+    expect(await farm.gov()).eq(user0.address)
+
+    await farm.connect(user0).setFarmDistributor(user1.address)
+    expect(await farm.farmDistributor()).eq(user1.address)
   })
 
   it("stake for 1", async () => {
@@ -44,16 +70,16 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 500 })
+    await rewardToken.transfer(farmDistributor.address, 500)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(500)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(500)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 200 })
+    await rewardToken.transfer(farmDistributor.address, 200)
 
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(700)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(700)
   })
 
   it("stake for 2", async () => {
@@ -73,7 +99,7 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 500 })
+    await rewardToken.transfer(farmDistributor.address, 500)
 
     expect(await stakingToken.balanceOf(user1.address)).eq(300)
     await stakingToken.connect(user1).approve(farm.address, 300)
@@ -81,15 +107,15 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(400)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 200 })
+    await rewardToken.transfer(farmDistributor.address, 200)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(550) // 500 + 50
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(550) // 500 + 50
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
   })
 
   it("stake for 3", async () => {
@@ -112,7 +138,7 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 500 })
+    await rewardToken.transfer(farmDistributor.address, 500)
 
     expect(await stakingToken.balanceOf(user1.address)).eq(300)
     await stakingToken.connect(user1).approve(farm.address, 300)
@@ -120,16 +146,16 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(400)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 200 })
+    await rewardToken.transfer(farmDistributor.address, 200)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).unstake(user0.address, 100)
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(300)
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
 
     expect(await stakingToken.balanceOf(user2.address)).eq(600)
     await stakingToken.connect(user2).approve(farm.address, 600)
@@ -137,19 +163,19 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user2.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(900)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 3000 })
+    await rewardToken.transfer(farmDistributor.address, 3000)
 
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(1149)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(1149)
 
-    expect(await provider.getBalance(receiver2.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(0)
     await farm.connect(user2).claim(receiver2.address)
-    expect(await provider.getBalance(receiver2.address)).eq(1999)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(1999)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(550)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(550)
   })
 
   it("unstake", async () => {
@@ -172,7 +198,7 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 500 })
+    await rewardToken.transfer(farmDistributor.address, 500)
 
     expect(await stakingToken.balanceOf(user1.address)).eq(300)
     await stakingToken.connect(user1).approve(farm.address, 300)
@@ -180,16 +206,16 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(400)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 200 })
+    await rewardToken.transfer(farmDistributor.address, 200)
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).unstake(user1.address, 100)
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(300)
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
 
     expect(await stakingToken.balanceOf(user2.address)).eq(600)
     await stakingToken.connect(user2).approve(farm.address, 600)
@@ -197,19 +223,19 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user2.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(900)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 1800 })
+    await rewardToken.transfer(farmDistributor.address, 1800)
 
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(550)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(550)
 
-    expect(await provider.getBalance(receiver2.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(0)
     await farm.connect(user2).claim(receiver2.address)
-    expect(await provider.getBalance(receiver2.address)).eq(1200)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(1200)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(750)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(750)
   })
 
   it("unstake to zero", async () => {
@@ -232,7 +258,7 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user0.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 500 })
+    await rewardToken.transfer(farmDistributor.address, 500)
 
     expect(await stakingToken.balanceOf(user1.address)).eq(300)
     await stakingToken.connect(user1).approve(farm.address, 300)
@@ -240,16 +266,16 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(400)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 200 })
+    await rewardToken.transfer(farmDistributor.address, 200)
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).unstake(user1.address, 100)
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(300)
 
-    expect(await provider.getBalance(receiver1.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(0)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
 
     expect(await stakingToken.balanceOf(user2.address)).eq(600)
     await stakingToken.connect(user2).approve(farm.address, 600)
@@ -257,33 +283,33 @@ describe("Farm", function () {
     expect(await stakingToken.balanceOf(user2.address)).eq(0)
     expect(await stakingToken.balanceOf(farm.address)).eq(900)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 1800 })
+    await rewardToken.transfer(farmDistributor.address, 1800)
 
-    expect(await provider.getBalance(receiver1.address)).eq(150)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(150)
     await farm.connect(user1).claim(receiver1.address)
-    expect(await provider.getBalance(receiver1.address)).eq(550)
+    expect(await rewardToken.balanceOf(receiver1.address)).eq(550)
 
-    expect(await provider.getBalance(receiver2.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(0)
     await farm.connect(user2).claim(receiver2.address)
-    expect(await provider.getBalance(receiver2.address)).eq(1200)
+    expect(await rewardToken.balanceOf(receiver2.address)).eq(1200)
 
-    expect(await provider.getBalance(receiver0.address)).eq(0)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(0)
     await farm.connect(user0).claim(receiver0.address)
-    expect(await provider.getBalance(receiver0.address)).eq(750)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(750)
 
     await farm.connect(user0).unstake(user0.address, 100)
     await farm.connect(user1).unstake(user1.address, 200)
     await farm.connect(user2).unstake(user2.address, 600)
     expect(await stakingToken.balanceOf(farm.address)).eq(0)
-    expect(await provider.getBalance(farm.address)).eq(0)
+    expect(await rewardToken.balanceOf(farm.address)).eq(0)
 
     await stakingToken.connect(user0).approve(farm.address, 100)
     await farm.connect(user0).stake(100)
 
-    await wallet.sendTransaction({ to: farmDistributor.address, value: 700 })
+    await rewardToken.transfer(farmDistributor.address, 700)
 
-    expect(await provider.getBalance(receiver0.address)).eq(750)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(750)
     await farm.connect(user0).exit(receiver0.address, 100)
-    expect(await provider.getBalance(receiver0.address)).eq(1450)
+    expect(await rewardToken.balanceOf(receiver0.address)).eq(1450)
   })
 })

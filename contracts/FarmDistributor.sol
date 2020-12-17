@@ -3,17 +3,22 @@
 pragma solidity 0.6.12;
 
 import "./libraries/math/SafeMath.sol";
+import "./libraries/token/IERC20.sol";
+
 import "./interfaces/IFarmDistributor.sol";
 
 contract FarmDistributor is IFarmDistributor {
     using SafeMath for uint256;
 
-    receive() external payable {}
+    IERC20 public rewardToken;
+
+    constructor(IERC20 _rewardToken) public {
+        rewardToken = _rewardToken;
+    }
 
     function distribute(address farm) external override {
-        uint256 amount = address(this).balance;
+        uint256 amount = rewardToken.balanceOf(address(this));
         if (amount == 0) { return; }
-        (bool success,) = farm.call{value: amount}("");
-        require(success, "FarmDistributor: distribution transfer failed");
+        rewardToken.transfer(farm, amount);
     }
 }

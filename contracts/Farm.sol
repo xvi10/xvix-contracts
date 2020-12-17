@@ -14,6 +14,7 @@ contract Farm is IFarm {
     uint256 constant PRECISION = 1e30;
 
     IERC20 public override stakingToken;
+    IERC20 public override rewardToken;
     IFarmDistributor public farmDistributor;
 
     // track stakes
@@ -30,6 +31,8 @@ contract Farm is IFarm {
     // track total rewards
     uint256 public totalClaimedRewards;
     uint256 public totalFarmRewards;
+
+    address public gov;
 
     /**
      * @dev Emitted when an account stakes
@@ -52,12 +55,29 @@ contract Farm is IFarm {
      */
     event Claim(address indexed who, uint256 amountClaimed);
 
-    constructor(IERC20 _stakingToken, IFarmDistributor _farmDistributor) public {
-        stakingToken = _stakingToken;
-        farmDistributor = _farmDistributor;
+    event GovChange(address gov);
+    event DistributorChange(address distributor);
+
+    modifier onlyGov() {
+        require(msg.sender == gov, "Farm: forbidden");
+        _;
     }
 
-    receive() external payable {}
+    constructor(IERC20 _stakingToken, IERC20 _rewardToken) public {
+        stakingToken = _stakingToken;
+        rewardToken = _rewardToken;
+        gov = msg.sender;
+    }
+
+    function setGov(address _gov) public onlyGov {
+        gov = _gov;
+        emit GovChange(_gov);
+    }
+
+    function setFarmDistributor(IFarmDistributor _farmDistributor) public onlyGov {
+        farmDistributor = _farmDistributor;
+        emit DistributorChange(address(_farmDistributor));
+    }
 
     /**
      * @dev Stake tokens for rewards.
@@ -78,7 +98,7 @@ contract Farm is IFarm {
         require(amount <= staked[msg.sender], "Farm: Cannot withdraw amount bigger than available balance");
         staked[msg.sender] = staked[msg.sender].sub(amount);
         totalStaked = totalStaked.sub(amount);
-        require(stakingToken.transfer(receiver, amount));
+        stakingToken.transfer(receiver, amount);
         emit Unstake(receiver, amount);
     }
 
@@ -90,9 +110,7 @@ contract Farm is IFarm {
         uint256 rewardToClaim = claimableReward[msg.sender];
         claimableReward[msg.sender] = 0;
 
-        (bool success,) = receiver.call{value: rewardToClaim}("");
-        require(success, "Farm: claim transfer failed");
-
+        rewardToken.transfer(receiver, rewardToClaim);
         emit Claim(receiver, rewardToClaim);
     }
 
@@ -125,9 +143,11 @@ contract Farm is IFarm {
      */
     modifier update() {
         // pull from distributor
-        farmDistributor.distribute(address(this));
+        if (address(farmDistributor) != address(0)) {
+            farmDistributor.distribute(address(this));
+        }
         // calculate total rewards
-        uint256 newTotalFarmRewards = address(this).balance.add(totalClaimedRewards).mul(PRECISION);
+        uint256 newTotalFarmRewards = rewardToken.balanceOf(address(this)).add(totalClaimedRewards).mul(PRECISION);
         // calculate block reward
         uint256 totalBlockReward = newTotalFarmRewards.sub(totalFarmRewards);
         // update farm rewards
