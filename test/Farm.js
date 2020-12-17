@@ -24,12 +24,13 @@ describe("Farm", function () {
     stakingToken = fixtures.pairs.xvix.weth
     rewardToken = fixtures.dai
     farmDistributor = await deployContract("FarmDistributor", [rewardToken.address])
-    farm = await deployContract("Farm", [stakingToken.address, rewardToken.address])
+    farm = await deployContract("Farm", ["XVIX:ETH", stakingToken.address, rewardToken.address])
     await farm.setFarmDistributor(farmDistributor.address)
     await rewardToken.mint(wallet.address, 10000)
   })
 
   it("inits", async () => {
+    expect(await farm.name()).eq("XVIX:ETH")
     expect(await farm.rewardToken()).eq(rewardToken.address)
     expect(await farm.stakingToken()).eq(stakingToken.address)
   })

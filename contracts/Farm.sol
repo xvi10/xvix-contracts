@@ -13,6 +13,7 @@ contract Farm is IFarm {
     using SafeMath for uint256;
     uint256 constant PRECISION = 1e30;
 
+    string public name;
     IERC20 public override stakingToken;
     IERC20 public override rewardToken;
     IFarmDistributor public farmDistributor;
@@ -63,7 +64,8 @@ contract Farm is IFarm {
         _;
     }
 
-    constructor(IERC20 _stakingToken, IERC20 _rewardToken) public {
+    constructor(string memory _name, IERC20 _stakingToken, IERC20 _rewardToken) public {
+        name = _name;
         stakingToken = _stakingToken;
         rewardToken = _rewardToken;
         gov = msg.sender;
