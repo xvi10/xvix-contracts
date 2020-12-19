@@ -110,6 +110,9 @@ describe("TimeVault", function () {
 
     await expect(vault.connect(user0).withdraw(user1.address))
       .to.be.revertedWith("TimeVault: withdrawal not initiated")
+
+    await expect(vault.connect(user0).beginWithdrawal(1))
+      .to.be.revertedWith("TimeVault: insufficient balance")
   })
 
   it("withdrawalSlots", async () => {

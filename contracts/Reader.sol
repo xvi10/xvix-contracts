@@ -36,6 +36,17 @@ contract Reader {
         floor = _floor;
     }
 
+    function getBalances(IERC20 _token, address[] memory _accounts) public view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](_accounts.length + 1);
+
+        balances[0] = _token.totalSupply();
+        for (uint256 i = 0; i < _accounts.length; i++) {
+            balances[i + 1] = _token.balanceOf(_accounts[i]);
+        }
+
+        return balances;
+    }
+
     function getPoolAmounts(
         address _account,
         address _token0,

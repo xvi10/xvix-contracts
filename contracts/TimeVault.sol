@@ -27,7 +27,7 @@ contract TimeVault is ReentrancyGuard {
         token = _token;
     }
 
-    function deposit(uint256 _amount) public nonReentrant {
+    function deposit(uint256 _amount) external nonReentrant {
         require(_amount > 0, "TimeVault: insufficient amount");
         address account = msg.sender;
         IERC20(token).transferFrom(account, address(this), _amount);
@@ -35,7 +35,7 @@ contract TimeVault is ReentrancyGuard {
         emit Deposit(account, _amount);
     }
 
-    function beginWithdrawal(uint256 _amount) public nonReentrant {
+    function beginWithdrawal(uint256 _amount) external nonReentrant {
         address account = msg.sender;
         require(_amount > 0, "TimeVault: insufficient amount");
         require(_amount <= balanceOf(account), "TimeVault: insufficient balance");
@@ -50,7 +50,7 @@ contract TimeVault is ReentrancyGuard {
         emit BeginWithdrawal(account, _amount);
     }
 
-    function withdraw(address _receiver) public nonReentrant {
+    function withdraw(address _receiver) external nonReentrant {
         address account = msg.sender;
         uint256 currentTime = block.timestamp;
         uint256 minTime = withdrawalTimestamps[account];
