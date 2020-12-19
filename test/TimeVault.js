@@ -31,6 +31,10 @@ describe("TimeVault", function () {
     await expect(vault.connect(user0).deposit(100))
       .to.be.revertedWith("XVIX: transfer amount exceeds allowance")
 
+    await xvix.connect(user0).approve(vault.address, 100)
+    await expect(vault.connect(user0).deposit(100))
+      .to.be.revertedWith("XVIX: subtraction amount exceeds balance")
+
     await xvix.transfer(user0.address, 1000)
     expect(await xvix.balanceOf(user0.address)).eq(995)
 
