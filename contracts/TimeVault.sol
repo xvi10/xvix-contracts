@@ -6,8 +6,9 @@ import "./libraries/math/SafeMath.sol";
 import "./libraries/token/IERC20.sol";
 import "./libraries/utils/ReentrancyGuard.sol";
 import "./interfaces/IXVIX.sol";
+import "./interfaces/ITimeVault.sol";
 
-contract TimeVault is ReentrancyGuard {
+contract TimeVault is ITimeVault, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant WITHDRAWAL_DELAY = 7 days;
@@ -17,7 +18,7 @@ contract TimeVault is ReentrancyGuard {
     mapping (address => uint256) public balances;
     mapping (address => uint256) public withdrawalTimestamps;
     mapping (address => uint256) public withdrawalAmounts;
-    mapping (uint256 => uint256) public withdrawalSlots;
+    mapping (uint256 => uint256) public override withdrawalSlots;
 
     event Deposit(address account, uint256 amount);
     event BeginWithdrawal(address account, uint256 amount);

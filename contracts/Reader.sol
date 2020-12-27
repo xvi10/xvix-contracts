@@ -7,6 +7,7 @@ import "./uniswap/UniswapV2Library.sol";
 import "./libraries/token/IERC20.sol";
 import "./interfaces/ILGEToken.sol";
 import "./interfaces/IFloor.sol";
+import "./interfaces/ITimeVault.sol";
 
 contract Reader {
     using SafeMath for uint256;
@@ -34,6 +35,16 @@ contract Reader {
         lgeTokenWETH = _lgeTokenWETH;
         distributor = _distributor;
         floor = _floor;
+    }
+
+    function getWithdrawalSlots(ITimeVault vault, uint256[] memory slots) public view returns (uint256[] memory) {
+        uint256[] memory amounts = new uint256[](slots.length);
+
+        for (uint256 i = 0; i < slots.length; i++) {
+            amounts[i] = vault.withdrawalSlots(slots[i]);
+        }
+
+        return amounts;
     }
 
     function getBalances(IERC20 _token, address[] memory _accounts) public view returns (uint256[] memory) {
