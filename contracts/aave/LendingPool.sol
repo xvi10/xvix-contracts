@@ -24,7 +24,7 @@ contract LendingPool {
         // get the FlashLoanReceiver instance
         IFlashLoanReceiver receiver = IFlashLoanReceiver(_receiver);
         (bool success,) = _receiver.call{value: _amount}("");
-        require(success, "LendingPool: transfer to reciever failed");
+        require(success, "LendingPool: transfer to receiver failed");
 
         // execute action of the receiver
         receiver.executeOperation(_reserve, _amount, amountFee, _params);

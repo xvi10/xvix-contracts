@@ -42,7 +42,7 @@ contract Floor is IFloor, ReentrancyGuard {
         IXVIX(xvix).burn(msg.sender, _burnAmount);
 
         (bool success,) = _receiver.call{value: refundAmount}("");
-        require(success, "Floor: transfer to reciever failed");
+        require(success, "Floor: transfer to receiver failed");
 
         emit Refund(_receiver, refundAmount, _burnAmount);
         emit FloorPrice(capital, IERC20(xvix).totalSupply());

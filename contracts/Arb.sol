@@ -93,6 +93,6 @@ contract Arb is FlashLoanReceiverBase {
         uint256 profit = address(this).balance;
 
         (bool success,) = receiver.call{value: profit}("");
-        require(success, "Arb: transfer to reciever failed");
+        require(success, "Arb: transfer to receiver failed");
     }
 }
