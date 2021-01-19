@@ -11,21 +11,24 @@ import '../libraries/token/IERC20.sol';
 import '../interfaces/IWETH.sol';
 import '../interfaces/IUniswapV2ERC20.sol';
 import '../interfaces/IUniswapV2Factory.sol';
+import '../interfaces/IUniFarm.sol';
 
 contract XvixRouter {
     using SafeMath for uint;
 
     address public immutable factory;
     address public immutable WETH;
+    address public immutable uniFarm;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
         _;
     }
 
-    constructor(address _factory, address _WETH) public {
+    constructor(address _factory, address _WETH, address _uniFarm) public {
         factory = _factory;
         WETH = _WETH;
+        uniFarm = _uniFarm;
     }
 
     receive() external payable {
@@ -83,6 +86,33 @@ contract XvixRouter {
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
         liquidity = IUniswapV2Pair(pair).mint(to);
+        // refund dust eth, if any
+        if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
+    }
+
+    function addLiquidityETHAndStake(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external virtual payable ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
+        (amountToken, amountETH) = _addLiquidity(
+            token,
+            WETH,
+            amountTokenDesired,
+            msg.value,
+            amountTokenMin,
+            amountETHMin
+        );
+        address pair = UniswapV2Library.pairFor(factory, token, WETH);
+        TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
+        IWETH(WETH).deposit{value: amountETH}();
+        assert(IWETH(WETH).transfer(pair, amountETH));
+        liquidity = IUniswapV2Pair(pair).mint(address(this));
+        IERC20(pair).approve(uniFarm, liquidity);
+        IUniFarm(uniFarm).deposit(liquidity, to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }

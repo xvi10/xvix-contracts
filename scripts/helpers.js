@@ -11,7 +11,8 @@ async function deployContract(name, args, label) {
   if (label) { info = name + ":" + label }
   const contractFactory = await ethers.getContractFactory(name)
   const contract = await contractFactory.deploy(...args)
-  console.info(`Deploying ${info} ${args} to ${contract.address}...`)
+  const argStr = args.map((i) => `"${i}"`).join(" ")
+  console.info(`Deploying ${info} ${contract.address} ${argStr}`)
   await contract.deployTransaction.wait()
   console.info("... Completed!")
   return contract
