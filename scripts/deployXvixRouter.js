@@ -6,7 +6,6 @@ async function main() {
   const uniFarm = { address: "0x8A3d7A49ADa4FED00d83fA6827F46F83b62eF87F" }
   const xvix = await contractAt("XVIX", "0x4bAE380B5D762D543d426331b8437926443ae9ec")
   const router = await deployContract("XvixRouter", [factory.address, weth.address, uniFarm.address])
-  await sendTxn(xvix.createSafe(router.address), "xvix.createSafe")
   await sendTxn(xvix.setTransferConfig(router.address, 0, 0, 0, 0), "xvix.setTransferConfig")
 
   return { router }

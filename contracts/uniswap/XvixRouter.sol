@@ -12,6 +12,7 @@ import '../interfaces/IWETH.sol';
 import '../interfaces/IUniswapV2ERC20.sol';
 import '../interfaces/IUniswapV2Factory.sol';
 import '../interfaces/IUniFarm.sol';
+import '../interfaces/IXVIX.sol';
 
 contract XvixRouter {
     using SafeMath for uint;
@@ -144,6 +145,8 @@ contract XvixRouter {
         address to,
         uint deadline
     ) public virtual ensure(deadline) returns (uint amountToken, uint amountETH) {
+        IXVIX(token).rebase();
+
         (amountToken, amountETH) = removeLiquidity(
             token,
             WETH,
@@ -154,6 +157,30 @@ contract XvixRouter {
             deadline
         );
         TransferHelper.safeTransfer(token, to, amountToken);
+        IWETH(WETH).withdraw(amountETH);
+        TransferHelper.safeTransferETH(to, amountETH);
+    }
+
+    function removeLiquidityETHSupportingFeeOnTransferTokens(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) public virtual ensure(deadline) returns (uint amountETH) {
+        IXVIX(token).rebase();
+
+        (, amountETH) = removeLiquidity(
+            token,
+            WETH,
+            liquidity,
+            amountTokenMin,
+            amountETHMin,
+            address(this),
+            deadline
+        );
+        TransferHelper.safeTransfer(token, to, IERC20(token).balanceOf(address(this)));
         IWETH(WETH).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
     }
