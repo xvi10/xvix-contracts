@@ -9,41 +9,50 @@ contract Fund {
     using SafeMath for uint256;
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
-    uint256 public constant FEE_SPLIT_A = 6600; // 66%
-    uint256 public constant FEE_SPLIT_B = 2900; // 29%
 
-    address public receiverA;
-    address public receiverB;
-    address public receiverC;
+    address[] public receivers;
+    uint256[] public feeBasisPoints;
 
-    constructor(address _receiverA, address _receiverB, address _receiverC) public {
-        receiverA = _receiverA;
-        receiverB = _receiverB;
-        receiverC = _receiverC;
+    address public gov;
+    address public xvix;
+
+    constructor(address _xvix) public {
+        xvix = _xvix;
+        gov = msg.sender;
     }
 
-    function setReceiverA(address _receiverA) public {
-        require(msg.sender == receiverA, "Fund: forbidden");
-        receiverA = _receiverA;
+    function setReceivers(address[] memory _receivers, uint256[] memory _feeBasisPoints) public {
+        require(msg.sender == gov, "Fund: forbidden");
+        _validateInput(_receivers, _feeBasisPoints);
+        receivers = _receivers;
+        feeBasisPoints = _feeBasisPoints;
     }
 
-    function setReceiverB(address _receiverB) public {
-        require(msg.sender == receiverB, "Fund: forbidden");
-        receiverB = _receiverB;
+    function withdraw(address _token) public {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        for (uint256 i = 0; i < receivers.length; i++) {
+            uint256 feePoints = feeBasisPoints[i];
+            uint256 amount = balance.mul(feePoints).div(BASIS_POINTS_DIVISOR);
+            IERC20(_token).transfer(receivers[i], amount);
+        }
     }
 
-    function setReceiverC(address _receiverC) public {
-        require(msg.sender == receiverC, "Fund: forbidden");
-        receiverC = _receiverC;
+    function withdrawXVIX() public {
+        address token = xvix;
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        for (uint256 i = 0; i < receivers.length; i++) {
+            uint256 feePoints = feeBasisPoints[i];
+            uint256 amount = balance.mul(feePoints).div(BASIS_POINTS_DIVISOR);
+            IERC20(token).transfer(receivers[i], amount);
+        }
     }
 
-    function withdraw(address _token, uint256 _amount) public {
-        require(msg.sender == receiverA || msg.sender == receiverB || msg.sender == receiverC, "Fund: forbidden");
-        uint256 amountA = _amount.mul(FEE_SPLIT_A).div(BASIS_POINTS_DIVISOR);
-        uint256 amountB = _amount.mul(FEE_SPLIT_B).div(BASIS_POINTS_DIVISOR);
-        uint256 amountC = _amount.sub(amountA).sub(amountB);
-        IERC20(_token).transfer(receiverA, amountA);
-        IERC20(_token).transfer(receiverB, amountB);
-        IERC20(_token).transfer(receiverC, amountC);
+    function _validateInput(address[] memory _receivers, uint256[] memory _feeBasisPoints) private pure {
+        require(_receivers.length == _feeBasisPoints.length, "Fund: invalid input");
+        uint256 totalBasisPoints = 0;
+        for (uint256 i = 0; i < _feeBasisPoints.length; i++) {
+            totalBasisPoints = totalBasisPoints.add(_feeBasisPoints[i]);
+        }
+        require(totalBasisPoints == BASIS_POINTS_DIVISOR, "Fund: invalid input");
     }
 }
