@@ -34,4 +34,24 @@ contract Gov {
         require(block.timestamp > govHandoverTime, "Gov: handover time has not passed");
         IXVIX(xvix).setGov(_gov);
     }
+
+    function createSafe(address _account) public onlyAdmin {
+        IXVIX(xvix).createSafe(_account);
+    }
+
+    function setTransferConfig(
+        address _msgSender,
+        uint256 _senderBurnBasisPoints,
+        uint256 _senderFundBasisPoints,
+        uint256 _receiverBurnBasisPoints,
+        uint256 _receiverFundBasisPoints
+    ) public onlyAdmin {
+        IXVIX(xvix).setTransferConfig(
+            _msgSender,
+            _senderBurnBasisPoints,
+            _senderFundBasisPoints,
+            _receiverBurnBasisPoints,
+            _receiverFundBasisPoints
+        );
+    }
 }

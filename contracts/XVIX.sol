@@ -147,7 +147,7 @@ contract XVIX is IERC20, IXVIX {
         fund = _fund;
     }
 
-    function createSafe(address _account) public onlyGov enforceMaxSupply {
+    function createSafe(address _account) public override onlyGov enforceMaxSupply {
         require(!safes[_account], "XVIX: account is already a safe");
         safes[_account] = true;
 
@@ -230,7 +230,7 @@ contract XVIX is IERC20, IXVIX {
         uint256 _senderFundBasisPoints,
         uint256 _receiverBurnBasisPoints,
         uint256 _receiverFundBasisPoints
-    ) public onlyGov {
+    ) public override onlyGov {
         require(_msgSender != address(0), "XVIX: cannot set zero address");
         _validateTransferConfig(
             _senderBurnBasisPoints,
