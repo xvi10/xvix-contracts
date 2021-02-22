@@ -143,7 +143,7 @@ contract XVIX is IERC20, IXVIX {
         distributor = _distributor;
     }
 
-    function setFund(address _fund) public onlyGov {
+    function setFund(address _fund) public override onlyGov {
         fund = _fund;
     }
 

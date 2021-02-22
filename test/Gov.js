@@ -11,6 +11,7 @@ describe("Gov", function () {
   const provider = waffle.provider
   const [wallet, user0, user1, user2, user3] = provider.getWallets()
   let xvix
+  let fund
   let gov
   let govHandoverTime
 
@@ -18,6 +19,7 @@ describe("Gov", function () {
     const fixtures = await loadFixtures(provider, wallet, distributor)
     govHandoverTime = (await getBlockTime(provider))
     xvix = fixtures.xvix
+    fund = fixtures.fund
     gov = await deployContract("Gov", [xvix.address, govHandoverTime])
     await xvix.setGov(gov.address)
   })
@@ -70,6 +72,17 @@ describe("Gov", function () {
     await gov.connect(user0).setGov(user2.address)
 
     expect(await xvix.gov()).eq(user2.address)
+  })
+
+  it("setFund", async () => {
+    await gov.setAdmin(user0.address)
+    gov.connect(user0).extendHandoverTime(govHandoverTime + 100)
+    await expect(gov.connect(user1).setFund(user3.address))
+      .to.be.revertedWith("Gov: forbidden")
+
+    expect(await xvix.fund()).eq(fund.address)
+    await gov.connect(user0).setFund(user3.address)
+    expect(await xvix.fund()).eq(user3.address)
   })
 
   it("createSafe", async () => {

@@ -35,6 +35,10 @@ contract Gov {
         IXVIX(xvix).setGov(_gov);
     }
 
+    function setFund(address _fund) public onlyAdmin {
+        IXVIX(xvix).setFund(_fund);
+    }
+
     function createSafe(address _account) public onlyAdmin {
         IXVIX(xvix).createSafe(_account);
     }
